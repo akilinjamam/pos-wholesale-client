@@ -1,17 +1,25 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { errorMessage } from '@/api/client';
-import { login as loginRequest, logout as logoutRequest } from '@/api/endpoints/auth';
+import {
+  changePassword as changePasswordRequest,
+  fetchMe,
+  login as loginRequest,
+  logout as logoutRequest,
+} from '@/api/endpoints/auth';
 import { useAppDispatch, useAppSelector } from '@/app/store';
 import {
   selectCurrentUser,
   selectHasPermission,
   signedIn,
   signedOut,
+  tokenRefreshed,
+  userLoaded,
 } from '@/store/authSlice';
 
-import type { LoginBody } from '@/api/endpoints/auth';
+import type { ChangePasswordBody, LoginBody } from '@/api/endpoints/auth';
 import type { Permission } from '@shared/permissions';
 
 /**
@@ -59,6 +67,36 @@ export function useLogout() {
   });
 }
 
+/**
+ * A user changing their own password.
+ *
+ * The server bumps `tokenVersion`, which kills every token that account holds — including the
+ * pair this browser is using. It hands back a fresh pair for exactly that reason, so the two
+ * steps here are not optional bookkeeping: without pushing the new access token into the store,
+ * the very next request 401s and the user is signed out by their own successful password
+ * change.
+ *
+ * `/auth/me` is then re-read because `mustChangePassword` has just become false, and the shell
+ * reads that flag.
+ */
+export function useChangePassword() {
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: (body: ChangePasswordBody) => changePasswordRequest(body),
+    onSuccess: async (tokens) => {
+      dispatch(tokenRefreshed(tokens.accessToken));
+      try {
+        dispatch(userLoaded(await fetchMe()));
+      } catch {
+        // The token is good — this is only the profile refresh. The shell keeps the previous
+        // copy rather than dropping a working session over a failed GET.
+      }
+      toast.success('Password changed — your other sessions have been signed out');
+    },
+  });
+}
+
 /** The signed-in user, or null. */
 export function useCurrentUser() {
   return useAppSelector(selectCurrentUser);
@@ -73,4 +111,24 @@ export function useCurrentUser() {
  */
 export function usePermission(permission: Permission | null): boolean {
   return useAppSelector((s) => selectHasPermission(s, permission));
+}
+
+/**
+ * The same check, as a reusable predicate — for anything that has to test *many* permissions in
+ * one render: the sidebar filtering twelve modules, a module landing page filtering its cards,
+ * a table deciding which action columns to draw.
+ *
+ * `usePermission` in a loop is not an option (hooks cannot be called conditionally or in a map),
+ * and calling `useAppSelector` per item would subscribe the component once per permission.
+ *
+ * Memoised on the permissions array, whose identity is stable in the store between auth
+ * changes, so the returned function is stable too and can be a dependency.
+ */
+export function useCan(): (permission: Permission | null) => boolean {
+  const permissions = useAppSelector((s) => s.auth.user?.permissions);
+
+  return useMemo(() => {
+    const held = new Set<Permission>(permissions ?? []);
+    return (permission: Permission | null) => permission === null || held.has(permission);
+  }, [permissions]);
 }

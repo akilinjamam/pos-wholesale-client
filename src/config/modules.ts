@@ -255,23 +255,59 @@ export const MODULES: ModuleDef[] = [
     label: 'Settings',
     path: '/settings',
     icon: Settings,
-    permission: 'user:read',
+    // `null`, not `user:read`. The module itself is a landing page that lists whichever of its
+    // screens the caller may open, and the screens carry their own permissions — so an
+    // ACCOUNTS user who holds `org:read` but not `user:read` still reaches the company profile.
+    // Gating the module on one of its children's permissions would hide the other three.
+    permission: null,
     landsOnDay: 4,
     screens: [
       {
-        label: 'Users & roles',
+        label: 'Users',
         path: '/settings/users',
         permission: 'user:read',
-        description: 'Accounts and the permission matrix',
-        comingSoon: true,
+        description: 'Accounts, roles, location access and password resets',
+      },
+      {
+        label: 'Roles',
+        path: '/settings/roles',
+        permission: 'role:read',
+        description: 'What each role may do — the permission matrix',
       },
       {
         label: 'Locations',
         path: '/settings/locations',
         permission: 'location:read',
-        description: 'Warehouses, counters and damage stores',
-        comingSoon: true,
+        description: 'Warehouses, counters, transit and damage stores',
+      },
+      {
+        label: 'Company',
+        path: '/settings/company',
+        permission: 'org:read',
+        description: 'Company profile, currency, and the business rules',
       },
     ],
   },
 ];
+
+// ─── Lookups ────────────────────────────────────────────────────────────────────────────
+
+/** Every screen across every module, flattened — the router builds its routes from this. */
+export const ALL_SCREENS: readonly ModuleScreen[] = MODULES.flatMap((m) => m.screens);
+
+/**
+ * The module a path belongs to, longest prefix first.
+ *
+ * Prefix rather than equality, so `/settings/users` resolves to Settings — which is what the
+ * topbar breadcrumb and the sidebar's active state both need. Sorting by length keeps `/` (the
+ * dashboard) from swallowing everything.
+ */
+export function moduleForPath(pathname: string): ModuleDef | undefined {
+  return [...MODULES]
+    .sort((a, b) => b.path.length - a.path.length)
+    .find((m) => (m.path === '/' ? pathname === '/' : pathname.startsWith(m.path)));
+}
+
+export function screenForPath(pathname: string): ModuleScreen | undefined {
+  return ALL_SCREENS.find((s) => s.path === pathname);
+}

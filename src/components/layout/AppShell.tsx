@@ -1,96 +1,24 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
-import { useAppDispatch, useAppSelector } from '@/app/store';
-import { UserMenu } from '@/components/layout/UserMenu';
-import { Button } from '@/components/ui/button';
-import { env } from '@/config/env';
-import { MODULES } from '@/config/modules';
+import { useAppSelector } from '@/app/store';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Topbar } from '@/components/layout/Topbar';
 import { cn } from '@/lib/utils';
-import { toggleSidebar } from '@/store/uiSlice';
 
 /** Tailwind's `md`. Below this the sidebar is an off-canvas drawer, not a fixed rail. */
 const MD_BREAKPOINT = '(min-width: 768px)';
 
-interface SidebarContentProps {
-  /** Icon-only rail. Desktop only — the mobile drawer is always full width. */
-  collapsed: boolean;
-  /** Called after a nav item is chosen, so the mobile drawer can close itself. */
-  onNavigate?: () => void;
-  /** The collapse toggle is meaningless in the drawer, which is either open or gone. */
-  showCollapseToggle?: boolean;
-}
-
 /**
- * The sidebar's contents, rendered twice: once in the desktop rail, once inside the mobile
- * drawer. Extracted so the nav never drifts between the two.
+ * The chrome, drawn once around every authenticated screen.
+ *
+ * Its own job is now only the *shell*: the rail, the drawer and the route transition. The
+ * navigation moved to `Sidebar` (which filters by permission) and the header to `Topbar`, so
+ * this file is about layout and nothing else — and the two pieces that have real logic can be
+ * read without wading through drawer mechanics.
  */
-function SidebarContent({
-  collapsed,
-  onNavigate,
-  showCollapseToggle = false,
-}: SidebarContentProps) {
-  const dispatch = useAppDispatch();
-
-  return (
-    <>
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-sm font-bold text-white">
-          OW
-        </div>
-        {!collapsed && <span className="truncate text-sm font-semibold">{env.appName}</span>}
-      </div>
-
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {MODULES.map((mod) => {
-          const Icon = mod.icon;
-          return (
-            <NavLink
-              key={mod.key}
-              to={mod.path}
-              end={mod.path === '/'}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                  'hover:bg-white/10',
-                  isActive && 'bg-sidebar-accent font-medium text-white',
-                  collapsed && 'justify-center px-0',
-                )
-              }
-              title={collapsed ? mod.label : undefined}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">{mod.label}</span>}
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      {showCollapseToggle && (
-        <div className="shrink-0 border-t border-sidebar-border p-2">
-          <button
-            onClick={() => dispatch(toggleSidebar())}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-white/10"
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
-            ) : (
-              <>
-                <PanelLeftClose className="h-4 w-4" />
-                <span>Collapse</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
-    </>
-  );
-}
-
 export function AppShell() {
   const { theme, sidebarCollapsed } = useAppSelector((s) => s.ui);
   const location = useLocation();
@@ -156,8 +84,6 @@ export function AppShell() {
     };
   }, [mobileOpen, closeMobile]);
 
-  const currentModule = MODULES.find((m) => m.path === location.pathname)?.label ?? 'Dashboard';
-
   return (
     <div className="flex min-h-screen bg-background">
       {/* ── Desktop rail: hidden below md, where the drawer takes over ── */}
@@ -167,7 +93,7 @@ export function AppShell() {
           sidebarCollapsed ? 'w-16' : 'w-60',
         )}
       >
-        <SidebarContent collapsed={sidebarCollapsed} showCollapseToggle />
+        <Sidebar collapsed={sidebarCollapsed} showCollapseToggle />
       </aside>
 
       {/* ── Mobile drawer: mounted only while open, so its links are not reachable by
@@ -204,39 +130,33 @@ export function AppShell() {
                 aria-label="Close navigation"
                 className="absolute right-2 top-3 rounded-md p-1.5 text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
 
               {/* Never collapsed: an icon-only rail makes no sense inside a drawer. */}
-              <SidebarContent collapsed={false} onNavigate={closeMobile} />
+              <Sidebar collapsed={false} onNavigate={closeMobile} />
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b bg-background/95 px-4 backdrop-blur md:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            <Button
-              ref={triggerRef}
-              variant="ghost"
-              size="icon"
-              className="-ml-2 md:hidden"
-              onClick={() => setOpenedAtPath(location.pathname)}
-              aria-label="Open navigation"
-              aria-expanded={mobileOpen}
-            >
-              <Menu />
-            </Button>
-            <span className="truncate text-sm text-muted-foreground">{currentModule}</span>
-          </div>
+        <Topbar
+          ref={triggerRef}
+          theme={theme}
+          navOpen={mobileOpen}
+          onOpenNav={() => setOpenedAtPath(location.pathname)}
+        />
 
-          <div className="flex items-center gap-1">
-            <UserMenu theme={theme} />
-          </div>
-        </header>
+        {/*
+          Route transition — one of the few places motion earns its place.
 
-        {/* Route transition — one of the few places motion earns its place. */}
+          `key` on the pathname remounts the fade per route. `AnimatePresence` is deliberately
+          NOT used here: an exit animation keeps the old screen mounted while the new one
+          mounts, which on a data screen means both pages' queries are live at once and the
+          scroll position lands somewhere between them. A fade-in with no fade-out is the
+          honest version of this effect.
+        */}
         <motion.main
           key={location.pathname}
           initial={reduceMotion ? false : { opacity: 0, y: 8 }}

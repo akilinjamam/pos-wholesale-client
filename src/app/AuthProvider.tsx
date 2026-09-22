@@ -1,9 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 import { registerAuthBridge, setAccessToken } from '@/api/client';
 import { fetchMe } from '@/api/endpoints/auth';
-import { useAppDispatch, useAppSelector } from '@/app/store';
+import { store, useAppDispatch, useAppSelector } from '@/app/store';
 import { signedOut, tokenRefreshed, userLoaded } from '@/store/authSlice';
 
 import type { ReactNode } from 'react';
@@ -38,6 +39,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registerAuthBridge({
       onRefreshed: (token) => dispatch(tokenRefreshed(token)),
       onSignOut: () => {
+        // Say why. A refresh fails for one of three reasons — the session expired, the account
+        // was disabled, or a role change bumped `tokenVersion` — and from Day 4 the third is
+        // routine: editing a role signs its holders out mid-task. Being returned to the login
+        // screen with no explanation reads as a bug, and generates a support call every time.
+        //
+        // Only for a session that was actually live (`authenticated`). A token that was
+        // already dead when the tab opened leaves the status at `authenticating`, and telling
+        // someone their access "changed" as they arrive at the login screen they were heading
+        // to anyway is noise.
+        //
+        // Read from the store rather than from a selector in this component: the bridge is
+        // registered once and would otherwise close over the status as it was at boot.
+        if (store.getState().auth.status === 'authenticated') {
+          toast.info('Your access changed — please sign in again');
+        }
+
         dispatch(signedOut());
         // Drop every cached response. Without this, the next person to sign in on this
         // terminal sees the previous user's data until each query happens to refetch — which

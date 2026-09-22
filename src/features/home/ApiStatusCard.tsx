@@ -3,7 +3,13 @@ import { AlertTriangle, CheckCircle2, Database, RefreshCw, XCircle } from 'lucid
 import { errorMessage } from '@/api/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useHealth } from '@/hooks/data/useHealth';
 import { cn } from '@/lib/utils';
@@ -110,9 +116,7 @@ export function ApiStatusCard() {
               {transactionsReady ? (
                 <div className="flex items-start gap-2 rounded-md border border-success/30 bg-success/5 p-3 text-sm">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                  <p>
-                    Transactions available — atomic stock, ledger and numbering will work.
-                  </p>
+                  <p>Transactions available — atomic stock, ledger and numbering will work.</p>
                 </div>
               ) : (
                 <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">

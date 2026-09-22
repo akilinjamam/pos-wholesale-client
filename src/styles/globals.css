@@ -113,6 +113,31 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /*
+   * Scrollbars are hidden everywhere — the page, the sidebar, the dialog bodies, the table's
+   * horizontal overflow.
+   *
+   * Applied to `*` rather than to the handful of known scroll containers on purpose: new
+   * containers appear on almost every screen from here on (the cart, the pick list, the
+   * permission matrix), and a list of selectors would be permanently one screen out of date.
+   *
+   * `display: none` on the WebKit pseudo-element, `scrollbar-width` for Firefox, and
+   * `-ms-overflow-style` for the older Edge/IE engines some counter terminals still run.
+   *
+   * Scrolling itself is untouched: wheel, trackpad, touch, and keyboard (arrows, Page Up/Down,
+   * Home/End, and Tab onto a focusable child) all still work. What is lost is the *affordance*
+   * — nothing on screen says "there is more below", and the bar cannot be dragged. Where that
+   * matters, the content needs its own cue; the table's pagination footer is one already.
+   */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /*

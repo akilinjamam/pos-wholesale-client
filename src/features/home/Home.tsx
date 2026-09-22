@@ -13,6 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { env } from '@/config/env';
 import { MODULES } from '@/config/modules';
+import { useCan } from '@/hooks/data/useAuth';
 
 import { ApiStatusCard } from './ApiStatusCard';
 
@@ -26,6 +27,7 @@ const KPIS = [
 
 export function Home() {
   const reduceMotion = useReducedMotion();
+  const can = useCan();
 
   const fadeUp = (delay: number) => ({
     initial: reduceMotion ? false : { opacity: 0, y: 12 },
@@ -33,18 +35,23 @@ export function Home() {
     transition: { duration: 0.35, delay: reduceMotion ? 0 : delay, ease: 'easeOut' as const },
   });
 
-  // Modules with at least one screen, in the order they land, so the home page doubles as a
-  // visible build schedule while the system is under construction.
-  const upcoming = MODULES.filter((m) => m.screens.length > 0).sort(
-    (a, b) => a.landsOnDay - b.landsOnDay,
-  );
+  // Modules with at least one screen **this user may open**, in the order they land — so the
+  // home page doubles as a visible build schedule while the system is under construction.
+  //
+  // The permission filter matters as much here as in the sidebar: a dashboard that links a
+  // cashier to Dealers and Purchase is the retail app's habit of advertising capabilities the
+  // user does not have, and then answering the click with a 403.
+  const upcoming = MODULES.filter((m) => can(m.permission))
+    .map((m) => ({ ...m, screens: m.screens.filter((s) => can(s.permission)) }))
+    .filter((m) => m.screens.length > 0)
+    .sort((a, b) => a.landsOnDay - b.landsOnDay);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <motion.header {...fadeUp(0)} className="space-y-1">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{env.appName}</h1>
-          <Badge variant="outline">Day 1 · setup</Badge>
+          <Badge variant="outline">Day 4 · auth &amp; RBAC</Badge>
         </div>
         <p className="text-muted-foreground">
           Wholesale ERP and counter POS for optical products — dealers, bulk orders, dispatch,
@@ -102,8 +109,13 @@ export function Home() {
                         {mod.screens.map((s) => s.label).join(' · ')}
                       </span>
                     </span>
-                    <Badge variant="secondary" className="shrink-0">
-                      day {mod.landsOnDay}
+                    <Badge
+                      variant={mod.screens.some((s) => !s.comingSoon) ? 'success' : 'secondary'}
+                      className="shrink-0"
+                    >
+                      {mod.screens.some((s) => !s.comingSoon)
+                        ? 'ready'
+                        : `day ${mod.landsOnDay}`}
                     </Badge>
                     <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                   </Link>

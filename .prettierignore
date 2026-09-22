@@ -1,0 +1,8 @@
+dist
+node_modules
+
+# The API contract duplicated from the server, which is the source of truth for it.
+# `pos-whole-sale-server/npm run check:shared` compares the two copies BYTE FOR BYTE, so
+# reformatting this one — even harmlessly — fails that check and the server's `npm run verify`.
+# Changes belong in the server copy, then `check:shared -- --sync`.
+src/shared

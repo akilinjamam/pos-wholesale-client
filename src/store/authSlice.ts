@@ -112,7 +112,8 @@ interface WithAuth {
 
 export const selectAuthStatus = (s: WithAuth): AuthStatus => s.auth.status;
 export const selectCurrentUser = (s: WithAuth): AuthUser | null => s.auth.user;
-export const selectIsAuthenticated = (s: WithAuth): boolean => s.auth.status === 'authenticated';
+export const selectIsAuthenticated = (s: WithAuth): boolean =>
+  s.auth.status === 'authenticated';
 
 /**
  * The client-side permission check.
