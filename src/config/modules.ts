@@ -14,6 +14,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import type { Permission } from '@shared/permissions';
+
 /**
  * THE module registry.
  *
@@ -22,13 +24,16 @@ import {
  * appear in a menu it is not permitted for — which is precisely the bug in the retail app,
  * where menus are ungated and every item is clickable by everyone.
  *
- * `permission` values become `Permission` (from @shared/permissions) on Day 2; they are plain
- * strings today only because the catalog does not exist yet.
+ * `permission` is the `Permission` union from @shared/permissions, so a module pointing at a
+ * capability that does not exist is a compile error rather than a menu entry that silently
+ * never appears for anyone.
+ *
+ * `null` means "no permission required" — the dashboard, which every signed-in user sees.
  */
 export interface ModuleScreen {
   label: string;
   path: string;
-  permission: string;
+  permission: Permission;
   description: string;
   /** Cleared as each screen lands, day by day. */
   comingSoon?: boolean;
@@ -39,7 +44,7 @@ export interface ModuleDef {
   label: string;
   path: string;
   icon: LucideIcon;
-  permission: string;
+  permission: Permission | null;
   /** The day from WORK-PLAN-DAYS.md on which this module's first screen lands. */
   landsOnDay: number;
   screens: ModuleScreen[];
@@ -51,7 +56,7 @@ export const MODULES: ModuleDef[] = [
     label: 'Dashboard',
     path: '/',
     icon: LayoutDashboard,
-    permission: 'dashboard:read',
+    permission: null,
     landsOnDay: 1,
     screens: [],
   },
@@ -73,7 +78,7 @@ export const MODULES: ModuleDef[] = [
       {
         label: 'Price lists',
         path: '/catalog/price-lists',
-        permission: 'priceList:read',
+        permission: 'price:read',
         description: 'Tier and dealer pricing with quantity breaks',
         comingSoon: true,
       },
@@ -175,7 +180,7 @@ export const MODULES: ModuleDef[] = [
       {
         label: 'Receipts',
         path: '/receivables/receipts',
-        permission: 'payment:create',
+        permission: 'payment:receipt',
         description: 'Collections allocated against open invoices',
         comingSoon: true,
       },
@@ -241,7 +246,7 @@ export const MODULES: ModuleDef[] = [
     label: 'Reports',
     path: '/reports',
     icon: Receipt,
-    permission: 'report:read',
+    permission: 'report:sales',
     landsOnDay: 37,
     screens: [],
   },
@@ -250,7 +255,7 @@ export const MODULES: ModuleDef[] = [
     label: 'Settings',
     path: '/settings',
     icon: Settings,
-    permission: 'settings:read',
+    permission: 'user:read',
     landsOnDay: 4,
     screens: [
       {

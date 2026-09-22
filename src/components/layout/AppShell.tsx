@@ -1,14 +1,15 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { useAppDispatch, useAppSelector } from '@/app/store';
+import { UserMenu } from '@/components/layout/UserMenu';
 import { Button } from '@/components/ui/button';
 import { env } from '@/config/env';
 import { MODULES } from '@/config/modules';
 import { cn } from '@/lib/utils';
-import { toggleSidebar, toggleTheme } from '@/store/uiSlice';
+import { toggleSidebar } from '@/store/uiSlice';
 
 /** Tailwind's `md`. Below this the sidebar is an off-canvas drawer, not a fixed rail. */
 const MD_BREAKPOINT = '(min-width: 768px)';
@@ -91,7 +92,6 @@ function SidebarContent({
 }
 
 export function AppShell() {
-  const dispatch = useAppDispatch();
   const { theme, sidebarCollapsed } = useAppSelector((s) => s.ui);
   const location = useLocation();
   const reduceMotion = useReducedMotion();
@@ -231,15 +231,9 @@ export function AppShell() {
             <span className="truncate text-sm text-muted-foreground">{currentModule}</span>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => dispatch(toggleTheme())}
-            aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
-            title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-          >
-            {theme === 'light' ? <Moon /> : <Sun />}
-          </Button>
+          <div className="flex items-center gap-1">
+            <UserMenu theme={theme} />
+          </div>
         </header>
 
         {/* Route transition — one of the few places motion earns its place. */}

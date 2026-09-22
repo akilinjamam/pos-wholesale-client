@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 
 import { env } from '@/config/env';
 
-import type { ApiFailure, ApiSuccess } from '@shared/types';
+import type { ApiFailure, ApiSuccess, TokenPair } from '@shared/types';
+import type { InternalAxiosRequestConfig } from 'axios';
 
 /**
  * The single axios instance.
@@ -14,13 +15,20 @@ import type { ApiFailure, ApiSuccess } from '@shared/types';
  *  2. `/api/v1` is appended here, so the env var is a plain host. The retail app bakes the
  *     version into VITE_DATA_URL, which is why nobody can remember whether to include it.
  */
+const BASE_URL = `${env.apiUrl.replace(/\/+$/, '')}/api/v1`;
+
 export const api: AxiosInstance = axios.create({
-  baseURL: `${env.apiUrl.replace(/\/+$/, '')}/api/v1`,
+  baseURL: BASE_URL,
   timeout: 20_000,
   headers: { Accept: 'application/json' },
+  // Required for the refresh flow: the server sets the refresh token as an httpOnly cookie
+  // scoped to /api/v1/auth, and the browser will not send it cross-origin (5174 → 5100)
+  // without this. httpOnly is what keeps the long-lived credential out of reach of any XSS
+  // on the page, which is why the cookie is preferred over storing it in localStorage.
+  withCredentials: true,
 });
 
-/** Set by the auth slice on login and cleared on logout (wired on Day 3). */
+/** Set by AuthProvider on login and cleared on logout. Held in memory, not read from storage. */
 let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null): void {
@@ -57,19 +65,95 @@ export function errorCode(error: unknown): string | null {
   return null;
 }
 
+// ─── Silent token refresh ───────────────────────────────────────────────────────────────
+
+/**
+ * Called when a refresh succeeds or fails. AuthProvider registers these so this module never
+ * imports the Redux store — which would be a cycle (`store` → `authSlice`, and any slice that
+ * wanted to call the API would come back here).
+ */
+interface AuthBridge {
+  onRefreshed: (accessToken: string) => void;
+  onSignOut: () => void;
+}
+
+let bridge: AuthBridge | null = null;
+
+export function registerAuthBridge(handlers: AuthBridge): void {
+  bridge = handlers;
+}
+
+/** Endpoints that must never trigger a refresh — a 401 from these *is* the answer. */
+function isAuthEndpoint(url: string | undefined): boolean {
+  return Boolean(url && /\/auth\/(login|refresh|logout)$/.test(url));
+}
+
+/**
+ * One refresh at a time.
+ *
+ * A page that fires five queries on mount will get five simultaneous 401s when the access
+ * token expires. Without this, each would start its own refresh; the server rotates the
+ * refresh token on every call, so four of the five would present a token that had just been
+ * superseded and the user would be thrown out mid-session. Instead the first caller does the
+ * work and the rest await the same promise.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  refreshInFlight ??= (async () => {
+    try {
+      // A bare axios call, not `api` — going through the instance would re-enter this
+      // interceptor on failure and recurse.
+      const { data } = await axios.post<ApiSuccess<TokenPair>>(
+        `${BASE_URL}/auth/refresh`,
+        {},
+        { withCredentials: true, timeout: 20_000 },
+      );
+      setAccessToken(data.data.accessToken);
+      bridge?.onRefreshed(data.data.accessToken);
+      return data.data.accessToken;
+    } catch {
+      // The refresh token is gone, expired, or its tokenVersion no longer matches — which is
+      // what a role change, a password reset or a logout elsewhere looks like from here.
+      setAccessToken(null);
+      bridge?.onSignOut();
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+/** Axios does not type its own retry marker, so we add one. */
+type RetriableRequest = InternalAxiosRequestConfig & { _retried?: boolean };
+
 api.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
-    if (error instanceof AxiosError) {
-      const status = error.response?.status;
+  async (error: unknown) => {
+    if (!(error instanceof AxiosError)) return Promise.reject(error);
 
-      // 401 is handled by the auth layer (refresh, then redirect) — not worth a toast, which
-      // would fire on every page during a routine token refresh.
-      // 422 belongs on the form fields, so the form owns it.
-      if (status !== 401 && status !== 422) {
-        toast.error(errorMessage(error));
+    const status = error.response?.status;
+    const request = error.config as RetriableRequest | undefined;
+
+    // A 401 means "your access token is no longer good". Try once to renew it and replay the
+    // request, so an expired token is invisible to the user rather than an interruption.
+    if (status === 401 && request && !request._retried && !isAuthEndpoint(request.url)) {
+      request._retried = true;
+      const renewed = await refreshAccessToken();
+      if (renewed) {
+        request.headers.Authorization = `Bearer ${renewed}`;
+        return api.request(request);
       }
     }
+
+    // 401 is owned by the auth layer above — a toast here would fire on every routine refresh.
+    // 422 belongs on the form fields, so the form owns it.
+    if (status !== 401 && status !== 422) {
+      toast.error(errorMessage(error));
+    }
+
     return Promise.reject(error);
   },
 );
