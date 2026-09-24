@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, humanise } from '@/lib/utils';
 
 /**
  * One coloured label for every status in the system.
@@ -68,12 +68,6 @@ export interface StatusPillProps {
   /** Override the text; by default the status is humanised. */
   label?: string;
   className?: string;
-}
-
-/** `PARTIALLY_DISPATCHED` → `Partially dispatched`. */
-function humanise(status: string): string {
-  const words = status.toLowerCase().replace(/_/g, ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function StatusPill({ status, tone, label, className }: StatusPillProps) {

@@ -73,7 +73,12 @@ export const MODULES: ModuleDef[] = [
         path: '/catalog/products',
         permission: 'product:read',
         description: 'Frames, sunglasses, lenses, accessories and machines',
-        comingSoon: true,
+      },
+      {
+        label: 'Brands & categories',
+        path: '/catalog/organisation',
+        permission: 'product:read',
+        description: 'The labels and the tree products are filed under',
       },
       {
         label: 'Price lists',

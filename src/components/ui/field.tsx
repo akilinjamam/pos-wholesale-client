@@ -23,6 +23,8 @@ export interface FieldProps {
   error?: string;
   hint?: string;
   required?: boolean;
+  /** For grid placement, e.g. `sm:col-span-2` on a field that needs the full row. */
+  className?: string;
   /** Receives the props that must land on the input to keep the wiring intact. */
   children: (props: {
     id: string;
@@ -31,7 +33,7 @@ export interface FieldProps {
   }) => ReactNode;
 }
 
-export function Field({ label, error, hint, required, children }: FieldProps) {
+export function Field({ label, error, hint, required, className, children }: FieldProps) {
   const id = useId();
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
@@ -39,7 +41,7 @@ export function Field({ label, error, hint, required, children }: FieldProps) {
   const describedBy = error ? errorId : hint ? hintId : undefined;
 
   return (
-    <div className="space-y-2">
+    <div className={cn('space-y-2', className)}>
       <Label htmlFor={id} className={cn(error && 'text-destructive')}>
         {label}
         {required && (

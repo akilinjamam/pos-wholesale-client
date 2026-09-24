@@ -6,6 +6,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ModuleLanding } from '@/components/layout/ModuleLanding';
 import { ALL_SCREENS, MODULES } from '@/config/modules';
 import { Login } from '@/features/auth/Login';
+import { CatalogOrganisation } from '@/features/catalog/Organisation/CatalogOrganisation';
+import { ProductsList } from '@/features/catalog/Products/ProductsList';
 import { Home } from '@/features/home/Home';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
 import { CompanyProfile } from '@/features/settings/Company/CompanyProfile';
@@ -47,6 +49,8 @@ import type { ReactElement } from 'react';
  * the whole system from Day 1 while the screens arrive over forty days.
  */
 const SCREEN_ELEMENTS: Record<string, ReactElement> = {
+  '/catalog/products': <ProductsList />,
+  '/catalog/organisation': <CatalogOrganisation />,
   '/settings/users': <UsersList />,
   '/settings/roles': <RolesList />,
   '/settings/locations': <LocationsList />,

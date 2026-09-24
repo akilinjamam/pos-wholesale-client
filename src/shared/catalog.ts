@@ -98,16 +98,28 @@ const frameAttrs = z
  * Dioptres come in quarter steps, so the values are decimals rather than minor units — they are
  * measurements, not money, and `0.25` is exact in binary floating point.
  */
+const gridBound = (min: number, max: number) =>
+  z
+    .number({
+      // The form sends `null` for an empty box, which zod reports as "Expected number,
+      // received null" — a developer's message on a user's screen. A grid is all-or-nothing
+      // (see `isBlankGrid`), so an empty box here genuinely means this field is required.
+      invalid_type_error: 'Required',
+      required_error: 'Required',
+    })
+    .min(min)
+    .max(max);
+
 const lensGrid = z
   .object({
-    sphMin: z.number().min(-30).max(30),
-    sphMax: z.number().min(-30).max(30),
-    cylMin: z.number().min(-15).max(15),
-    cylMax: z.number().min(-15).max(15),
+    sphMin: gridBound(-30, 30),
+    sphMax: gridBound(-30, 30),
+    cylMin: gridBound(-15, 15),
+    cylMax: gridBound(-15, 15),
     addMin: z.number().min(0).max(6).nullable().optional().default(null),
     addMax: z.number().min(0).max(6).nullable().optional().default(null),
     /** Dioptre increment. 0.25 in practice; 0.125 exists for some progressives. */
-    step: z.number().positive().max(1),
+    step: gridBound(0, 1).positive(),
   })
   .strict()
   .superRefine((grid, ctx) => {
@@ -264,6 +276,33 @@ export const AXES_BY_TYPE = {
   ACCESSORY: ['color', 'size'],
   MACHINE: [],
 } as const;
+
+/**
+ * Is this a power grid the user has not actually filled in?
+ *
+ * A form binds every grid input to a key, so clearing them all leaves an object of nulls rather
+ * than the absent grid the schema expects — and the lens then fails validation on fields the
+ * user has deliberately emptied, with no way back to "this lens has no range". Treating an
+ * all-blank grid as no grid is what makes the section optional in practice as well as in the
+ * type.
+ *
+ * Shared, because the form must decide this the same way the API does: if they disagreed, a
+ * lens would save from one and be rejected by the other.
+ */
+export function isBlankGrid(grid: unknown): boolean {
+  if (!grid || typeof grid !== 'object') return true;
+  return Object.values(grid as Record<string, unknown>).every(
+    (v) => v === null || v === undefined || v === '',
+  );
+}
+
+/** Replace an all-blank grid with `null`, leaving everything else untouched. */
+export function normaliseAttrs<T extends Record<string, unknown>>(attrs: T): T {
+  if ('grid' in attrs && isBlankGrid(attrs.grid)) {
+    return { ...attrs, grid: null };
+  }
+  return attrs;
+}
 
 /**
  * Every dioptre step a grid declares, inclusive of both bounds.
