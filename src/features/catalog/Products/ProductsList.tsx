@@ -1,4 +1,4 @@
-import { Ban, Package, Pencil, Plus, Search } from 'lucide-react';
+import { Ban, Layers, Package, Pencil, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -19,6 +19,7 @@ import { useDeactivateProduct, useProducts } from '@/hooks/data/useProducts';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 import { ProductEditor } from './ProductEditor';
+import { VariantsDialog } from './Variants/VariantsDialog';
 
 import { formatMoney } from '@shared/money';
 import { PRODUCT_TYPES } from '@shared/enums';
@@ -58,6 +59,7 @@ export function ProductsList() {
   /** The editor's `key`, bumped per open — see the longer note in `RolesList`. */
   const [editorSession, setEditorSession] = useState(0);
   const [deactivating, setDeactivating] = useState<ProductPayload | null>(null);
+  const [variantsOf, setVariantsOf] = useState<ProductPayload | null>(null);
 
   const q = useDebouncedValue(search);
   const deactivateProduct = useDeactivateProduct();
@@ -173,6 +175,21 @@ export function ProductsList() {
       headClassName: 'text-right',
       cell: (p) => (
         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          {/* Only where there is something to manage — a product without axes has no
+              variants, and an always-present button would imply otherwise. */}
+          {p.hasVariants && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setVariantsOf(p)}
+              aria-label={`Variants of ${p.name}`}
+              title="Variants"
+            >
+              <Layers />
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
@@ -363,6 +380,13 @@ export function ProductsList() {
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
         product={editing}
+      />
+
+      <VariantsDialog
+        key={variantsOf?.id ?? 'none'}
+        open={variantsOf !== null}
+        onClose={() => setVariantsOf(null)}
+        product={variantsOf}
       />
 
       <ConfirmDialog
