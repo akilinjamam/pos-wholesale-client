@@ -8,6 +8,10 @@ import { ALL_SCREENS, MODULES } from '@/config/modules';
 import { Login } from '@/features/auth/Login';
 import { CatalogOrganisation } from '@/features/catalog/Organisation/CatalogOrganisation';
 import { ProductsList } from '@/features/catalog/Products/ProductsList';
+import { CreditHolds } from '@/features/dealers/CreditHolds';
+import { CustomersList } from '@/features/dealers/CustomersList';
+import { DealerProfile } from '@/features/dealers/DealerProfile';
+import { DealersList } from '@/features/dealers/DealersList';
 import { Home } from '@/features/home/Home';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
 import { CompanyProfile } from '@/features/settings/Company/CompanyProfile';
@@ -51,6 +55,9 @@ import type { ReactElement } from 'react';
 const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/catalog/products': <ProductsList />,
   '/catalog/organisation': <CatalogOrganisation />,
+  '/dealers/list': <DealersList />,
+  '/dealers/customers': <CustomersList />,
+  '/dealers/credit-holds': <CreditHolds />,
   '/settings/users': <UsersList />,
   '/settings/roles': <RolesList />,
   '/settings/locations': <LocationsList />,
@@ -87,6 +94,17 @@ export const router = createBrowserRouter([
               </RequirePermission>
             ),
           })),
+
+          // Detail pages. Not in the registry — they are reached from a list, never from the
+          // menu — but gated exactly like a screen, so a pasted link cannot mount one either.
+          {
+            path: 'dealers/profile/:id',
+            element: (
+              <RequirePermission permission="dealer:read">
+                <DealerProfile />
+              </RequirePermission>
+            ),
+          },
 
           // The screens themselves.
           ...ALL_SCREENS.filter((screen) => SCREEN_ELEMENTS[screen.path]).map((screen) => ({

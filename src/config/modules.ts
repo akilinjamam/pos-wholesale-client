@@ -94,15 +94,29 @@ export const MODULES: ModuleDef[] = [
     label: 'Dealers',
     path: '/dealers',
     icon: Users,
-    permission: 'dealer:read',
+    // `null`, as for Settings: Customers is gated on `customer:read`, and a user holding that
+    // without `dealer:read` must still reach it. The sidebar drops the module for anyone who
+    // can open none of its screens.
+    permission: null,
     landsOnDay: 10,
     screens: [
       {
         label: 'Dealers',
         path: '/dealers/list',
         permission: 'dealer:read',
-        description: 'Accounts, credit limits, balances and ageing',
-        comingSoon: true,
+        description: 'Accounts, credit limits and balances',
+      },
+      {
+        label: 'Customers',
+        path: '/dealers/customers',
+        permission: 'customer:read',
+        description: 'Named counter customers, and promoting them to dealers',
+      },
+      {
+        label: 'Credit holds',
+        path: '/dealers/credit-holds',
+        permission: 'dealer:read',
+        description: 'Dealers blocked from credit orders, and why',
       },
     ],
   },
