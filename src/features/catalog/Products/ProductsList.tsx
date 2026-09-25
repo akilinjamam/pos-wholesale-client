@@ -1,4 +1,4 @@
-import { Ban, Layers, Package, Pencil, Plus, Search } from 'lucide-react';
+import { Ban, Barcode, Layers, Package, Pencil, Plus, Search, Upload } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -18,6 +18,8 @@ import { useCategories } from '@/hooks/data/useCategories';
 import { useDeactivateProduct, useProducts } from '@/hooks/data/useProducts';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
+import { BarcodeSheet } from './BarcodeSheet';
+import { CsvImportDialog } from './CsvImportDialog';
 import { ProductEditor } from './ProductEditor';
 import { VariantsDialog } from './Variants/VariantsDialog';
 
@@ -44,6 +46,8 @@ export function ProductsList() {
   const canUpdate = usePermission('product:update');
   const canDelete = usePermission('product:delete');
   const canViewCost = usePermission('stock:viewCost');
+  const canPrintBarcodes = usePermission('barcode:print');
+  const canImport = usePermission('product:import');
 
   const [search, setSearch] = useState('');
   const [type, setType] = useState<'' | ProductType>('');
@@ -60,6 +64,19 @@ export function ProductsList() {
   const [editorSession, setEditorSession] = useState(0);
   const [deactivating, setDeactivating] = useState<ProductPayload | null>(null);
   const [variantsOf, setVariantsOf] = useState<ProductPayload | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  /**
+   * Row selection, for the barcode sheet.
+   *
+   * Both the ids and the rows themselves are kept. `DataTable` reports ids only — correctly,
+   * since it is generic — but a selection made on page 1 and extended on page 2 has to survive
+   * the trip, and by then page 1's rows are no longer loaded. Carrying the payloads forward is
+   * what makes "select across pages, then print" work.
+   */
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedById, setSelectedById] = useState<Record<string, ProductPayload>>({});
 
   const q = useDebouncedValue(search);
   const deactivateProduct = useDeactivateProduct();
@@ -79,6 +96,19 @@ export function ProductsList() {
     categoryUnder: categoryId || undefined,
     isActive: activeFilter === '' ? undefined : activeFilter === 'true',
   });
+
+  const onSelectionChange = (ids: string[]) => {
+    const rows = data?.items ?? [];
+    setSelectedIds(ids);
+    setSelectedById((previous) => {
+      const next: Record<string, ProductPayload> = {};
+      for (const id of ids) {
+        const found = previous[id] ?? rows.find((row) => row.id === id);
+        if (found) next[id] = found;
+      }
+      return next;
+    });
+  };
 
   const openEditor = (product: ProductPayload | null) => {
     setEditing(product);
@@ -237,12 +267,26 @@ export function ProductsList() {
         icon={Package}
         description="Frames, sunglasses, lenses, accessories and machines — one catalogue."
         actions={
-          canCreate && (
-            <Button onClick={() => openEditor(null)}>
-              <Plus aria-hidden="true" />
-              New product
-            </Button>
-          )
+          <>
+            {selectedIds.length > 0 && canPrintBarcodes && (
+              <Button variant="outline" onClick={() => setSheetOpen(true)}>
+                <Barcode aria-hidden="true" />
+                Print barcodes ({selectedIds.length})
+              </Button>
+            )}
+            {canImport && (
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload aria-hidden="true" />
+                Import CSV
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={() => openEditor(null)}>
+                <Plus aria-hidden="true" />
+                New product
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -345,6 +389,8 @@ export function ProductsList() {
         sort={sort}
         onSortChange={setSort}
         onRowClick={openEditor}
+        selectedIds={canPrintBarcodes ? selectedIds : undefined}
+        onSelectionChange={canPrintBarcodes ? onSelectionChange : undefined}
         empty={
           filtered ? (
             <EmptyState
@@ -380,6 +426,19 @@ export function ProductsList() {
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
         product={editing}
+      />
+
+      <BarcodeSheet
+        key={`sheet-${selectedIds.length}`}
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        products={selectedIds.map((id) => selectedById[id]).filter(Boolean)}
+      />
+
+      <CsvImportDialog
+        key={importOpen ? 'import-open' : 'import-closed'}
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
       />
 
       <VariantsDialog

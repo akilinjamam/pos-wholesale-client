@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
 import { normaliseAttrs, productAttrsSchema } from '@shared/catalog';
-import { BASE_UOMS, PRODUCT_TYPES, TRACKING_MODES } from '@shared/enums';
+import { BASE_UOMS, PACK_CODES, PRODUCT_TYPES, TRACKING_MODES } from '@shared/enums';
 import { fromMinor, toMinor } from '@shared/money';
+import { validatePacks } from '@shared/uom';
 
 import type { CreateProductBody } from '@/api/endpoints/products';
 import type { ProductType } from '@shared/enums';
@@ -47,6 +48,14 @@ export const productFormSchema = z
     hsCode: z.string().trim().max(20),
 
     baseUom: z.enum(BASE_UOMS),
+    packs: z.array(
+      z.object({
+        code: z.enum(PACK_CODES),
+        name: z.string().trim().min(1, 'Required').max(30),
+        factor: z.number().int('Whole numbers only').min(2, 'At least 2').max(100_000),
+        barcode: z.string().trim().max(60),
+      }),
+    ),
     trackingMode: z.enum(TRACKING_MODES),
 
     hasVariants: z.boolean(),
@@ -100,6 +109,16 @@ export const productFormSchema = z
       }
     }
 
+    // The same three rules the server applies, from the same function — so a pack the form
+    // accepts is a pack the API accepts, and the messages match.
+    for (const problem of validatePacks(values.baseUom, values.packs)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['packs', problem.index, problem.field],
+        message: problem.message,
+      });
+    }
+
     if (values.hasVariants && values.variantAxes.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -147,6 +166,7 @@ export function toFormValues(product: ProductPayload | null): ProductFormValues 
       barcode: '',
       hsCode: '',
       baseUom: 'PCS',
+      packs: [],
       trackingMode: 'NONE',
       hasVariants: false,
       variantAxes: [],
@@ -178,6 +198,12 @@ export function toFormValues(product: ProductPayload | null): ProductFormValues 
     barcode: product.barcode ?? '',
     hsCode: product.hsCode ?? '',
     baseUom: product.baseUom,
+    packs: product.packs.map((pack) => ({
+      code: pack.code,
+      name: pack.name,
+      factor: pack.factor,
+      barcode: pack.barcode ?? '',
+    })),
     trackingMode: product.trackingMode,
     hasVariants: product.hasVariants,
     variantAxes: product.variantAxes,
@@ -216,6 +242,13 @@ export function toRequestBody(
     barcode: values.barcode || null,
     hsCode: values.hsCode || null,
     baseUom: values.baseUom,
+    packs: values.packs.map((pack) => ({
+      code: pack.code,
+      name: pack.name,
+      factor: pack.factor,
+      // '' is the empty input; the API wants null, and a '' would claim a real barcode.
+      barcode: pack.barcode.trim() === '' ? null : pack.barcode.trim(),
+    })),
     trackingMode: values.trackingMode,
     hasVariants: values.hasVariants,
     variantAxes: values.hasVariants ? values.variantAxes : [],

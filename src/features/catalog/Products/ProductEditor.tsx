@@ -20,6 +20,7 @@ import { env } from '@/config/env';
 import { humanise } from '@/lib/utils';
 
 import { AttributeFields } from './attrs/AttributeFields';
+import { PackEditor } from './PackEditor';
 import {
   emptyAttrsFor,
   productFormSchema,
@@ -328,6 +329,8 @@ export function ProductEditor({ open, onClose, product }: ProductEditorProps) {
             )}
           </Field>
         </section>
+
+        <PackEditor form={form} />
 
         {/* ── Variants ── */}
         {allowedAxes.length > 0 && (
