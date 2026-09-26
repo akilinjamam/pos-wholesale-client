@@ -8,6 +8,7 @@ import {
   deletePriceEntry,
   deletePriceTier,
   importPriceEntries,
+  resolvePrice,
   listPriceEntries,
   listPriceTiers,
   updatePriceEntry,
@@ -15,7 +16,11 @@ import {
 } from '@/api/endpoints/pricing';
 import { partyKeys } from '@/hooks/data/useParties';
 
-import type { ListPriceEntriesParams, ListPriceTiersParams } from '@/api/endpoints/pricing';
+import type {
+  ListPriceEntriesParams,
+  ListPriceTiersParams,
+  ResolvePriceParams,
+} from '@/api/endpoints/pricing';
 import type {
   BulkAdjustInput,
   CreatePriceEntryInput,
@@ -37,6 +42,8 @@ export const pricingKeys = {
   entries: ['price-entries'] as const,
   entryList: (params: ListPriceEntriesParams) =>
     [...pricingKeys.entries, 'list', params] as const,
+  // Under `entries`, so any price edit also refreshes an open price check.
+  resolve: (params: ResolvePriceParams) => [...pricingKeys.entries, 'resolve', params] as const,
 };
 
 export function usePriceTiers(params: ListPriceTiersParams = {}, enabled = true) {
@@ -153,5 +160,19 @@ export function useBulkAdjustPrices() {
       void invalidate(pricingKeys.entries);
       toast.success(`${result.changed} price(s) adjusted`);
     },
+  });
+}
+
+/**
+ * A resolved price for the price-check widget. Keeps the previous answer on screen while the next
+ * one loads, so typing a quantity does not flash the result away between keystrokes.
+ */
+export function useResolvedPrice(params: ResolvePriceParams | null) {
+  return useQuery({
+    queryKey: pricingKeys.resolve(params ?? { productId: '' }),
+    queryFn: () => resolvePrice(params!),
+    enabled: Boolean(params),
+    placeholderData: keepPreviousData,
+    retry: false,
   });
 }

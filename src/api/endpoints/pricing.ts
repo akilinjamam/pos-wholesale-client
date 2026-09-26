@@ -1,4 +1,4 @@
-import { deleteData, getPage, patchData, postData } from '@/api/client';
+import { deleteData, getData, getPage, patchData, postData } from '@/api/client';
 
 import type {
   BulkAdjustInput,
@@ -13,6 +13,7 @@ import type {
   Paginated,
   PriceEntryPayload,
   PriceImportResult,
+  PriceResolution,
   PriceTierPayload,
 } from '@shared/types';
 
@@ -95,4 +96,22 @@ export function importPriceEntries(body: PriceImportInput): Promise<PriceImportR
 /** `dryRun: true` previews what would change; `false` applies it. */
 export function bulkAdjustPrices(body: BulkAdjustInput): Promise<BulkAdjustResult> {
   return postData<BulkAdjustResult>('/price-lists/bulk-adjust', body);
+}
+
+// ─── Resolution (Day 12) ────────────────────────────────────────────────────────────────
+
+export type ResolvePriceParams = {
+  productId: string;
+  variantId?: string;
+  /** Omit for a counter (walk-in) price. */
+  partyId?: string;
+  uomCode?: string;
+  qty?: number;
+  /** `YYYY-MM-DD`; the server defaults to today in the org's time zone. */
+  date?: string;
+};
+
+/** What a dealer pays and which rule decided it. Silent: the widget shows its own errors inline. */
+export function resolvePrice(params: ResolvePriceParams): Promise<PriceResolution> {
+  return getData<PriceResolution>('/pricing/resolve', params, { silent: true });
 }

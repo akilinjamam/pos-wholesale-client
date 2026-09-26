@@ -32,6 +32,7 @@ import { CreditLimitDialog } from './CreditLimitDialog';
 import { CreditUsage, DealerStatus, HoldBanner } from './credit';
 import { money } from './creditMath';
 import { PartyEditor } from './PartyEditor';
+import { PriceCheck } from '../pricing/PriceCheck';
 import { PriceGrid } from '../pricing/PriceGrid';
 
 import type { LucideIcon } from 'lucide-react';
@@ -427,7 +428,8 @@ function PricingTab({ dealer }: { dealer: PartyPayload }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <PriceCheck dealer={dealer} />
       <p className="text-sm text-muted-foreground">
         Prices set here apply to {dealer.displayName ?? dealer.name} only and win over{' '}
         {tierName ? (
@@ -437,7 +439,8 @@ function PricingTab({ dealer }: { dealer: PartyPayload }) {
         ) : (
           'retail prices (they have no tier)'
         )}
-        . A price check that shows which rule won arrives on Day 12.
+        . The dealer's {dealer.dealer?.discountPct ?? 0}% trade discount is applied to tier and
+        retail prices, never to these.
       </p>
       <PriceGrid
         scope={{ partyId: dealer.id }}

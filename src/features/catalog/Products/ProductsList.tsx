@@ -1,4 +1,14 @@
-import { Ban, Barcode, Layers, Package, Pencil, Plus, Search, Upload } from 'lucide-react';
+import {
+  Ban,
+  Barcode,
+  Calculator,
+  Layers,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Upload,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -8,6 +18,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { StatusPill } from '@/components/common/StatusPill';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { env } from '@/config/env';
@@ -22,6 +33,7 @@ import { BarcodeSheet } from './BarcodeSheet';
 import { CsvImportDialog } from './CsvImportDialog';
 import { ProductEditor } from './ProductEditor';
 import { VariantsDialog } from './Variants/VariantsDialog';
+import { PriceCheck } from '../../pricing/PriceCheck';
 
 import { formatMoney } from '@shared/money';
 import { PRODUCT_TYPES } from '@shared/enums';
@@ -48,6 +60,7 @@ export function ProductsList() {
   const canViewCost = usePermission('stock:viewCost');
   const canPrintBarcodes = usePermission('barcode:print');
   const canImport = usePermission('product:import');
+  const canReadPrices = usePermission('price:read');
 
   const [search, setSearch] = useState('');
   const [type, setType] = useState<'' | ProductType>('');
@@ -64,6 +77,7 @@ export function ProductsList() {
   const [editorSession, setEditorSession] = useState(0);
   const [deactivating, setDeactivating] = useState<ProductPayload | null>(null);
   const [variantsOf, setVariantsOf] = useState<ProductPayload | null>(null);
+  const [priceCheckOf, setPriceCheckOf] = useState<ProductPayload | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -207,6 +221,19 @@ export function ProductsList() {
         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           {/* Only where there is something to manage — a product without axes has no
               variants, and an always-present button would imply otherwise. */}
+          {canReadPrices && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setPriceCheckOf(p)}
+              aria-label={`Price check for ${p.name}`}
+              title="Price check"
+            >
+              <Calculator />
+            </Button>
+          )}
+
           {p.hasVariants && (
             <Button
               variant="ghost"
@@ -440,6 +467,23 @@ export function ProductsList() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
       />
+
+      <Dialog
+        open={priceCheckOf !== null}
+        onClose={() => setPriceCheckOf(null)}
+        title={`Price check — ${priceCheckOf?.name ?? ''}`}
+        description="What a dealer pays, and which rule sets it. Leave the dealer empty for the counter price."
+        size="xl"
+      >
+        {/* Keyed so a different product starts from a clean form. */}
+        {priceCheckOf && (
+          <PriceCheck
+            key={priceCheckOf.id}
+            product={priceCheckOf}
+            className="border-0 shadow-none"
+          />
+        )}
+      </Dialog>
 
       <VariantsDialog
         key={variantsOf?.id ?? 'none'}
