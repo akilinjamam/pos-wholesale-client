@@ -17,6 +17,7 @@ import { env } from '@/config/env';
 import { humanise } from '@/lib/utils';
 import { usePermission } from '@/hooks/data/useAuth';
 import { useOrg } from '@/hooks/data/useOrg';
+import { usePriceTiers } from '@/hooks/data/usePricing';
 import {
   useCreateParty,
   useEnrolParty,
@@ -77,6 +78,8 @@ export function PartyEditor({ role, open, onClose, party, onSaved }: PartyEditor
   const canSetCredit = usePermission('dealer:setCreditLimit');
   const canHold = usePermission('dealer:creditHold');
   const canReadUsers = usePermission('user:read');
+  // The tier list needs `price:read`; without it the current tier is shown as text.
+  const canReadPrices = usePermission('price:read');
 
   const readOnly = party ? !canUpdate : !canCreate;
 
@@ -91,6 +94,12 @@ export function PartyEditor({ role, open, onClose, party, onSaved }: PartyEditor
   const { data: users } = useUsers(
     canReadUsers && isDealer ? { limit: 200, isActive: true, sort: 'name' } : { limit: 1 },
   );
+
+  const { data: tiers } = usePriceTiers(
+    { limit: 200, isActive: true },
+    isDealer && canReadPrices,
+  );
+  const tierOptions = tiers?.items ?? [];
 
   const form = useForm<PartyFormValues>({
     resolver: zodResolver(partyFormSchema),
@@ -392,13 +401,39 @@ export function PartyEditor({ role, open, onClose, party, onSaved }: PartyEditor
               <Field
                 label="Price tier"
                 error={errors.dealer?.priceTierId?.message}
-                hint="Tiers arrive with price lists (Day 11)."
+                hint="Their own prices, where set, win over the tier's."
               >
-                {(props) => (
-                  <Select {...props} {...form.register('dealer.priceTierId')} disabled>
-                    <option value="">Default (retail)</option>
-                  </Select>
-                )}
+                {(props) =>
+                  canReadPrices ? (
+                    <Select
+                      {...props}
+                      {...form.register('dealer.priceTierId')}
+                      disabled={readOnly}
+                    >
+                      <option value="">No tier — retail prices</option>
+                      {/* A dealer already on a since-deactivated tier keeps it on screen; the
+                          server accepts it unchanged but will not let anyone new onto it. */}
+                      {party?.dealer?.priceTierId &&
+                        !tierOptions.some((t) => t.id === party.dealer?.priceTierId) && (
+                          <option value={party.dealer.priceTierId}>
+                            {party.dealer.priceTierName ?? 'Current tier'} (inactive)
+                          </option>
+                        )}
+                      {tierOptions.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      {...props}
+                      value={party?.dealer?.priceTierName ?? 'No tier — retail prices'}
+                      disabled
+                      readOnly
+                    />
+                  )
+                }
               </Field>
 
               <Field

@@ -32,6 +32,7 @@ import { CreditLimitDialog } from './CreditLimitDialog';
 import { CreditUsage, DealerStatus, HoldBanner } from './credit';
 import { money } from './creditMath';
 import { PartyEditor } from './PartyEditor';
+import { PriceGrid } from '../pricing/PriceGrid';
 
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -61,11 +62,6 @@ type TabKey = (typeof TABS)[number];
 
 /** The tabs a later day fills, and what fills them. */
 const LATER: Partial<Record<TabKey, { icon: LucideIcon; title: string; day: string }>> = {
-  pricing: {
-    icon: BadgePercent,
-    title: 'Dealer pricing arrives with price lists',
-    day: 'Price tiers and dealer-specific prices land on Day 11; the price check on Day 12.',
-  },
   ledger: {
     icon: BookOpen,
     title: 'The ledger starts with opening balances',
@@ -254,6 +250,7 @@ export function DealerProfile() {
       >
         {tab === 'info' && <InfoTab dealer={dealer} />}
         {tab === 'addresses' && <AddressesTab dealer={dealer} />}
+        {tab === 'pricing' && <PricingTab dealer={dealer} />}
         {later && (
           <Card>
             <EmptyState icon={later.icon} title={later.title} description={later.day} />
@@ -345,7 +342,7 @@ function InfoTab({ dealer }: { dealer: PartyPayload }) {
           <dl className="divide-y">
             <Row label="Credit limit" value={d ? money(d.creditLimitMinor) : null} />
             <Row label="Payment terms" value={d ? `${d.paymentTermsDays} days` : null} />
-            <Row label="Price tier" value={d?.priceTierId ? 'Assigned' : 'Default (retail)'} />
+            <Row label="Price tier" value={d?.priceTierName ?? 'No tier — retail prices'} />
             <Row label="Trade discount" value={d ? `${d.discountPct}%` : null} />
             <Row label="Salesperson" value={d?.salespersonName} />
             <Row label="Territory" value={d?.territory} />
@@ -405,6 +402,47 @@ function AddressesTab({ dealer }: { dealer: PartyPayload }) {
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+/**
+ * This dealer's own prices — overrides that win over their tier's list (Day 12 resolves the
+ * order). Managed with the same grid as a tier's list, scoped to the dealer.
+ */
+function PricingTab({ dealer }: { dealer: PartyPayload }) {
+  const canReadPrices = usePermission('price:read');
+  const tierName = dealer.dealer?.priceTierName;
+
+  if (!canReadPrices) {
+    return (
+      <Card>
+        <EmptyState
+          icon={BadgePercent}
+          title="Prices are not visible to you"
+          description="Viewing price lists needs the price:read permission."
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Prices set here apply to {dealer.displayName ?? dealer.name} only and win over{' '}
+        {tierName ? (
+          <>
+            the <strong className="text-foreground">{tierName}</strong> tier list
+          </>
+        ) : (
+          'retail prices (they have no tier)'
+        )}
+        . A price check that shows which rule won arrives on Day 12.
+      </p>
+      <PriceGrid
+        scope={{ partyId: dealer.id }}
+        scopeLabel={dealer.displayName ?? dealer.name}
+      />
     </div>
   );
 }

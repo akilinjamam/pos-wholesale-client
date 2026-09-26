@@ -13,6 +13,8 @@ import { CustomersList } from '@/features/dealers/CustomersList';
 import { DealerProfile } from '@/features/dealers/DealerProfile';
 import { DealersList } from '@/features/dealers/DealersList';
 import { Home } from '@/features/home/Home';
+import { PriceLists } from '@/features/pricing/PriceLists';
+import { PriceTiers } from '@/features/pricing/PriceTiers';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
 import { CompanyProfile } from '@/features/settings/Company/CompanyProfile';
 import { LocationsList } from '@/features/settings/Locations/LocationsList';
@@ -55,6 +57,8 @@ import type { ReactElement } from 'react';
 const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/catalog/products': <ProductsList />,
   '/catalog/organisation': <CatalogOrganisation />,
+  '/catalog/price-lists': <PriceLists />,
+  '/catalog/price-tiers': <PriceTiers />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,
