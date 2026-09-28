@@ -13,6 +13,14 @@ import { CustomersList } from '@/features/dealers/CustomersList';
 import { DealerProfile } from '@/features/dealers/DealerProfile';
 import { DealersList } from '@/features/dealers/DealersList';
 import { Home } from '@/features/home/Home';
+import { Adjustments } from '@/features/inventory/Adjustments';
+import { CountSheet } from '@/features/inventory/CountSheet';
+import { Counts } from '@/features/inventory/Counts';
+import { Expiry } from '@/features/inventory/Expiry';
+import { Serials } from '@/features/inventory/Serials';
+import { StockLedger } from '@/features/inventory/StockLedger';
+import { StockOnHand } from '@/features/inventory/StockOnHand';
+import { Transfers } from '@/features/inventory/Transfers';
 import { PriceLists } from '@/features/pricing/PriceLists';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
@@ -59,6 +67,13 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/catalog/organisation': <CatalogOrganisation />,
   '/catalog/price-lists': <PriceLists />,
   '/catalog/price-tiers': <PriceTiers />,
+  '/inventory/stock': <StockOnHand />,
+  '/inventory/ledger': <StockLedger />,
+  '/inventory/adjustments': <Adjustments />,
+  '/inventory/transfers': <Transfers />,
+  '/inventory/counts': <Counts />,
+  '/inventory/serials': <Serials />,
+  '/inventory/expiry': <Expiry />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,
@@ -106,6 +121,15 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission permission="dealer:read">
                 <DealerProfile />
+              </RequirePermission>
+            ),
+          },
+
+          {
+            path: 'inventory/counts/:id',
+            element: (
+              <RequirePermission permission="stock:read">
+                <CountSheet />
               </RequirePermission>
             ),
           },
