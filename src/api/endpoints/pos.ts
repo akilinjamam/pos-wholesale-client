@@ -2,6 +2,7 @@ import { api, deleteData, getData, getPage, postData } from '@/api/client';
 
 import type {
   CloseSessionInput,
+  CounterReturnInput,
   HoldSaleInput,
   OpenSessionInput,
   PosQuoteInput,
@@ -15,6 +16,8 @@ import type {
   PosQuote,
   PosSaleResult,
   PosSessionPayload,
+  ReturnableInvoice,
+  SalesReturnPayload,
 } from '@shared/types';
 
 /** The counter's endpoints (Day 18) — plus the lookups the sale screen needs. */
@@ -35,6 +38,33 @@ export const quoteCart = async (body: PosQuoteInput): Promise<PosQuote> => {
 };
 
 export const postSale = (body: PosSaleInput) => postData<PosSaleResult>('/pos/sales', body);
+/** A posted counter sale and its receipts — for reprinting. */
+export const getSale = (id: string) => getData<PosSaleResult>(`/pos/sales/${id}`);
+
+// ─── Shifts (Day 20) ────────────────────────────────────────────────────────────────────
+
+export const getSession = (id: string) => getData<PosSessionPayload>(`/pos/sessions/${id}`);
+export const listSessions = (params: {
+  status?: 'OPEN' | 'CLOSED';
+  limit?: number;
+  page?: number;
+}) => getPage<PosSessionPayload>('/pos/sessions', params);
+
+// ─── Returns (Day 20) ───────────────────────────────────────────────────────────────────
+
+/** A receipt, looked up by its number, with what can still come back. 404 when unknown. */
+export const getReturnableInvoice = (docNo: string) =>
+  getData<ReturnableInvoice>('/pos/returns/invoice', { docNo }, { silent: true });
+export const postReturn = (body: CounterReturnInput) =>
+  postData<{ salesReturn: SalesReturnPayload; replayed: boolean }>('/pos/returns', body);
+export const listReturns = (params: {
+  posSessionId?: string;
+  openExchange?: boolean;
+  limit?: number;
+}) => getPage<SalesReturnPayload>('/pos/returns', params);
+export const getReturn = (id: string) => getData<SalesReturnPayload>(`/pos/returns/${id}`);
+export const refundExchange = (id: string) =>
+  postData<SalesReturnPayload>(`/pos/returns/${id}/refund`, {});
 
 export const listHeld = () => getData<HeldSalePayload[]>('/pos/held');
 export const holdSale = (body: HoldSaleInput) => postData<HeldSalePayload>('/pos/held', body);

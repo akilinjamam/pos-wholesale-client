@@ -39,6 +39,8 @@ export interface PaymentDialogProps {
   /** CREDIT lets a dealer leave a balance on account; CASH needs the bill covered. */
   paymentMode: 'CASH' | 'CREDIT';
   customerName: string | null;
+  /** An exchange credit to spend — starts applied, and can be taken off. */
+  exchange: { returnId: string; docNo: string; amountMinor: number } | null;
   pending: boolean;
   error: string | null;
   onComplete: (tenders: TenderInput[]) => void;
@@ -49,12 +51,17 @@ export function PaymentDialog({
   totalMinor,
   paymentMode,
   customerName,
+  exchange,
   pending,
   error,
   onComplete,
   onClose,
 }: PaymentDialogProps) {
-  const [tenders, setTenders] = useState<TenderInput[]>([]);
+  const [tenders, setTenders] = useState<TenderInput[]>(() =>
+    exchange
+      ? [{ method: 'EXCHANGE', returnId: exchange.returnId, amountMinor: exchange.amountMinor }]
+      : [],
+  );
   const [method, setMethod] = useState<PosTender>('CASH');
   const [trxId, setTrxId] = useState('');
   const [provider, setProvider] = useState<MfsProvider>('BKASH');
@@ -67,17 +74,21 @@ export function PaymentDialog({
     .reduce((s, t) => s + t.amountMinor, 0);
   const remaining = Math.max(0, totalMinor - paid);
   const change = Math.max(0, paid - totalMinor);
-  const [amount, setAmount] = useState(String(fromMinor(totalMinor)));
+  const [amount, setAmount] = useState(() =>
+    remaining > 0 ? String(fromMinor(remaining)) : '',
+  );
 
   const covered = paid >= totalMinor;
   const canComplete =
     (covered || paymentMode === 'CREDIT') && !pending && nonCash <= totalMinor;
 
   const problem = useMemo(() => {
+    if (exchange && exchange.amountMinor > totalMinor)
+      return `The exchange credit (${money(exchange.amountMinor)}) is more than these items — add items, or refund the return instead.`;
     if (nonCash > totalMinor)
-      return 'Card, mobile and bank payments cannot exceed the total — only cash gives change.';
+      return 'Card, mobile, bank and exchange payments cannot exceed the total — only cash gives change.';
     return null;
-  }, [nonCash, totalMinor]);
+  }, [exchange, nonCash, totalMinor]);
 
   const addTender = () => {
     const value = Number(amount);
@@ -233,7 +244,8 @@ export function PaymentDialog({
             {tenders.map((t, i) => (
               <li key={i} className="flex items-center justify-between px-3 py-1.5">
                 <span>
-                  {METHODS.find((m) => m.method === t.method)?.label}
+                  {METHODS.find((m) => m.method === t.method)?.label ??
+                    `Exchange ${exchange?.docNo ?? ''}`}
                   {t.mfs && (
                     <span className="ml-2 font-mono text-xs text-muted-foreground">
                       {t.mfs.trxId}

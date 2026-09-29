@@ -173,6 +173,18 @@ export const MODULES: ModuleDef[] = [
         permission: 'pos:sell',
         description: 'Walk-in cash-and-carry point of sale',
       },
+      {
+        label: 'Returns',
+        path: '/counter/returns',
+        permission: 'pos:return',
+        description: 'Refund or exchange against a counter receipt',
+      },
+      {
+        label: 'Shift',
+        path: '/counter/shift',
+        permission: 'pos:closeSession',
+        description: 'Count the drawer, close the shift, Z-report',
+      },
     ],
   },
   {

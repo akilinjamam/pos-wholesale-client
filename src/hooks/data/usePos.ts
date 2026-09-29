@@ -4,7 +4,14 @@ import { toast } from 'sonner';
 import * as api from '@/api/endpoints/pos';
 import { stockKeys } from '@/hooks/data/useStock';
 
-import type { HoldSaleInput, OpenSessionInput, PosQuoteInput, PosSaleInput } from '@shared/pos';
+import type {
+  CloseSessionInput,
+  CounterReturnInput,
+  HoldSaleInput,
+  OpenSessionInput,
+  PosQuoteInput,
+  PosSaleInput,
+} from '@shared/pos';
 
 export const posKeys = {
   all: ['pos'] as const,
@@ -13,6 +20,11 @@ export const posKeys = {
   held: ['pos', 'held'] as const,
   customers: (q: string) => ['pos', 'customers', q] as const,
   lots: (productId: string) => ['pos', 'lots', productId] as const,
+  sale: (id: string) => ['pos', 'sale', id] as const,
+  sessions: (params: object) => ['pos', 'sessions', params] as const,
+  sessionById: (id: string) => ['pos', 'session', id] as const,
+  returnable: (docNo: string) => ['pos', 'returnable', docNo] as const,
+  returns: (params: object) => ['pos', 'returns', params] as const,
 };
 
 export function useCurrentSession() {
@@ -98,5 +110,97 @@ export function useDiscardHeld() {
   return useMutation({
     mutationFn: (id: string) => api.discardHeld(id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: posKeys.held }),
+  });
+}
+
+// ─── Day 20: reprints, shifts, returns ──────────────────────────────────────────────────
+
+export function useSale(id: string | null) {
+  return useQuery({
+    queryKey: posKeys.sale(id ?? ''),
+    queryFn: () => api.getSale(id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useSessions(params: {
+  status?: 'OPEN' | 'CLOSED';
+  limit?: number;
+  page?: number;
+}) {
+  return useQuery({
+    queryKey: posKeys.sessions(params),
+    queryFn: () => api.listSessions(params),
+  });
+}
+
+export function useSessionById(id: string | null) {
+  return useQuery({
+    queryKey: posKeys.sessionById(id ?? ''),
+    queryFn: () => api.getSession(id!),
+    enabled: Boolean(id),
+  });
+}
+
+/** Close the shift: the response is the frozen Z-report. */
+export function useCloseSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CloseSessionInput }) =>
+      api.closeSession(id, body),
+    onSuccess: () => {
+      // No shift now: say so at once, and drop the parked-sales list rather than refetch it —
+      // the server answers "open a shift first", which would toast right after a clean close.
+      qc.setQueryData(posKeys.session, null);
+      qc.removeQueries({ queryKey: posKeys.held });
+      void qc.invalidateQueries({
+        queryKey: posKeys.all,
+        predicate: (q) => q.queryKey[1] !== 'held' && q.queryKey[1] !== 'session',
+      });
+      toast.success('Shift closed');
+    },
+  });
+}
+
+export function useReturnable(docNo: string | null) {
+  return useQuery({
+    queryKey: posKeys.returnable(docNo ?? ''),
+    queryFn: () => api.getReturnableInvoice(docNo!),
+    enabled: Boolean(docNo),
+    retry: false,
+  });
+}
+
+export function useReturns(
+  params: { posSessionId?: string; openExchange?: boolean; limit?: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: posKeys.returns(params),
+    queryFn: () => api.listReturns(params),
+    enabled,
+  });
+}
+
+/** A return moves stock and money: refresh the shift's figures and stock screens with it. */
+export function usePostReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CounterReturnInput) => api.postReturn(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: posKeys.all });
+      void qc.invalidateQueries({ queryKey: stockKeys.all });
+    },
+  });
+}
+
+export function useRefundExchange() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.refundExchange(id),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: posKeys.all });
+      toast.success(`Refunded ${r.docNo} in cash`);
+    },
   });
 }

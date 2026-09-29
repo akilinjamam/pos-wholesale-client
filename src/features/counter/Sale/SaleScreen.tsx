@@ -1,4 +1,14 @@
-import { Keyboard, Loader2, PauseCircle, PlayCircle, Store, Wallet } from 'lucide-react';
+import {
+  Keyboard,
+  Loader2,
+  PauseCircle,
+  PlayCircle,
+  Printer,
+  Repeat,
+  Store,
+  Wallet,
+  X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -20,6 +30,8 @@ import {
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { posCart, toSaleLines } from '@/store/posCartSlice';
 
+import { PrintSettingsDialog } from '../print/PrintControls';
+
 import { CartTable } from './CartTable';
 import { PaymentDialog } from './PaymentDialog';
 import {
@@ -31,7 +43,13 @@ import {
   VariantDialog,
 } from './SaleDialogs';
 import { CustomerBox, OpenShiftPanel, QuickKeys, TotalsBox } from './SalePanels';
-import { lineFromProduct, loadQuickKeys, MAX_QUICK_KEYS, saveQuickKeys } from './saleHelpers';
+import {
+  lineFromProduct,
+  loadQuickKeys,
+  MAX_QUICK_KEYS,
+  money,
+  saveQuickKeys,
+} from './saleHelpers';
 import { ScanBar } from './ScanBar';
 
 import type { QuickKey } from './saleHelpers';
@@ -65,6 +83,7 @@ type Modal =
   | { kind: 'held' }
   | { kind: 'done'; result: PosSaleResult }
   | { kind: 'help' }
+  | { kind: 'printer' }
   | null;
 
 export function SaleScreen() {
@@ -244,16 +263,18 @@ function Till({ sessionLabel }: { sessionLabel: string }) {
         ...(cart.heldSaleId ? { heldSaleId: cart.heldSaleId } : {}),
       },
       {
-        onSuccess: (result) => setModal({ kind: 'done', result }),
+        onSuccess: (result) => {
+          // The cart is sold: clear it now, not when "New sale" is pressed — a cashier who walks
+          // away from the done screen must not come back to a sold cart (and its spent key).
+          dispatch(posCart.clearCart());
+          setModal({ kind: 'done', result });
+        },
         onError: (e) => setPayError(errorMessage(e)),
       },
     );
   };
 
-  const nextSale = () => {
-    dispatch(posCart.clearCart());
-    close();
-  };
+  const nextSale = () => close();
 
   // ── Park & resume ──
   const openPark = useCallback(() => {
@@ -273,7 +294,8 @@ function Till({ sessionLabel }: { sessionLabel: string }) {
         onSuccess: () => {
           // The parked copy replaces the one this cart was resumed from, if any.
           if (cart.heldSaleId) discardHeld.mutate(cart.heldSaleId);
-          nextSale();
+          dispatch(posCart.clearCart());
+          close();
         },
       },
     );
@@ -392,10 +414,16 @@ function Till({ sessionLabel }: { sessionLabel: string }) {
         description={sessionLabel}
         icon={Store}
         actions={
-          <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'help' })}>
-            <Keyboard aria-hidden="true" />
-            Shortcuts (F1)
-          </Button>
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'printer' })}>
+              <Printer aria-hidden="true" />
+              Printer
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'help' })}>
+              <Keyboard aria-hidden="true" />
+              Shortcuts (F1)
+            </Button>
+          </>
         }
       />
 
@@ -447,6 +475,26 @@ function Till({ sessionLabel }: { sessionLabel: string }) {
             onMode={(m) => dispatch(posCart.setPaymentMode(m))}
             onDone={focusScan}
           />
+          {cart.exchange && (
+            <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
+              <Repeat className="h-4 w-4 text-primary" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                Exchange credit <span className="font-mono">{cart.exchange.docNo}</span>
+              </span>
+              <span className="font-semibold tabular-nums">
+                {money(cart.exchange.amountMinor)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => dispatch(posCart.setExchange(null))}
+                aria-label="Take the exchange credit off this sale"
+              >
+                <X />
+              </Button>
+            </div>
+          )}
           <TotalsBox
             quote={quoteData}
             stale={quoteStale}
@@ -521,6 +569,7 @@ function Till({ sessionLabel }: { sessionLabel: string }) {
           totalMinor={quoteData.totalMinor}
           paymentMode={cart.paymentMode}
           customerName={cart.party?.name ?? (cart.walkInName.trim() || null)}
+          exchange={cart.exchange}
           pending={postSale.isPending}
           error={payError}
           onComplete={complete}
@@ -539,6 +588,7 @@ function Till({ sessionLabel }: { sessionLabel: string }) {
       )}
       {modal?.kind === 'done' && <DoneDialog result={modal.result} onNext={nextSale} />}
       {modal?.kind === 'help' && <ShortcutsDialog onClose={close} />}
+      {modal?.kind === 'printer' && <PrintSettingsDialog onClose={close} />}
     </div>
   );
 }

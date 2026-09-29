@@ -8,7 +8,9 @@ import { ALL_SCREENS, MODULES } from '@/config/modules';
 import { Login } from '@/features/auth/Login';
 import { CatalogOrganisation } from '@/features/catalog/Organisation/CatalogOrganisation';
 import { ProductsList } from '@/features/catalog/Products/ProductsList';
+import { ReturnsScreen } from '@/features/counter/Returns/ReturnsScreen';
 import { SaleScreen } from '@/features/counter/Sale/SaleScreen';
+import { ShiftScreen } from '@/features/counter/Shift/ShiftScreen';
 import { CreditHolds } from '@/features/dealers/CreditHolds';
 import { CustomersList } from '@/features/dealers/CustomersList';
 import { DealerProfile } from '@/features/dealers/DealerProfile';
@@ -76,6 +78,8 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/inventory/serials': <Serials />,
   '/inventory/expiry': <Expiry />,
   '/counter/sale': <SaleScreen />,
+  '/counter/returns': <ReturnsScreen />,
+  '/counter/shift': <ShiftScreen />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,

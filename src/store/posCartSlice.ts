@@ -47,6 +47,8 @@ export interface PosCartState {
   paymentMode: 'CASH' | 'CREDIT';
   heldSaleId: string | null;
   selectedKey: string | null;
+  /** An exchange return's credit this sale will spend (Day 20) — applied as an EXCHANGE tender. */
+  exchange: { returnId: string; docNo: string; amountMinor: number } | null;
 }
 
 const STORAGE_KEY = 'pos-wholesale.posCart';
@@ -66,6 +68,7 @@ const empty = (): PosCartState => ({
   paymentMode: 'CASH',
   heldSaleId: null,
   selectedKey: null,
+  exchange: null,
 });
 
 function load(): PosCartState {
@@ -202,14 +205,24 @@ const slice = createSlice({
     },
     /** Resume a parked sale: its lines replace the cart, and the sale will delete it. */
     loadCart(
-      _state,
+      state,
       {
         payload,
       }: PayloadAction<
         Pick<PosCartState, 'lines' | 'party' | 'walkInName' | 'orderDiscount' | 'heldSaleId'>
       >,
     ) {
-      return { ...empty(), ...payload, selectedKey: payload.lines[0]?.key ?? null };
+      // An exchange credit already on the till stays: it belongs to the customer at the counter.
+      return {
+        ...empty(),
+        ...payload,
+        exchange: state.exchange,
+        selectedKey: payload.lines[0]?.key ?? null,
+      };
+    },
+    /** Put an exchange credit on the till — or take it off (null). */
+    setExchange(state, { payload }: PayloadAction<PosCartState['exchange']>) {
+      state.exchange = payload;
     },
     /** After a completed sale, or "void cart": a fresh cart with a fresh idempotency key. */
     clearCart() {

@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useHeldSales, useLotsInStock } from '@/hooks/data/usePos';
 import { useVariants } from '@/hooks/data/useVariants';
 
+import { ReceiptButtons } from '../print/PrintControls';
+
 import { money, SHORTCUTS } from './saleHelpers';
 
 import type { CartLine } from '@/store/posCartSlice';
@@ -345,9 +347,12 @@ export function DoneDialog({ result, onNext }: { result: PosSaleResult; onNext: 
       title={`Sale ${result.invoice.docNo}`}
       size="sm"
       footer={
-        <Button data-autofocus onClick={onNext}>
-          New sale (Enter)
-        </Button>
+        <>
+          <ReceiptButtons sale={result} keys auto />
+          <Button data-autofocus onClick={onNext}>
+            New sale (Enter)
+          </Button>
+        </>
       }
     >
       <div className="space-y-3 text-center" aria-live="assertive">
@@ -368,7 +373,6 @@ export function DoneDialog({ result, onNext }: { result: PosSaleResult; onNext: 
             On account: <strong>{money(result.invoice.balanceMinor)}</strong>
           </p>
         )}
-        <p className="text-xs text-muted-foreground">Receipt printing arrives on Day 20.</p>
       </div>
     </Dialog>
   );

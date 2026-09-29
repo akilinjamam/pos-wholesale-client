@@ -84,5 +84,6 @@ export const SHORTCUTS: [string, string][] = [
   ['F8', 'Park the sale'],
   ['F9', 'Resume a parked sale'],
   ['F10 or Ctrl+Enter', 'Pay'],
+  ['P / A (sale done)', 'Print the receipt / the A4 invoice'],
   ['Esc', 'Close a dialog / clear the box'],
 ];
