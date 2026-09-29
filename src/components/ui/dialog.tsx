@@ -120,16 +120,18 @@ export function Dialog({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Next frame, so the panel has mounted and its entrance animation has begun. Focusing the
-    // first control rather than the panel itself puts the caret where typing should go.
-    const raf = requestAnimationFrame(() => {
-      const panel = panelRef.current;
-      const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
-      (first ?? panel)?.focus();
-    });
+    // Focus now, not a frame later: the panel is already in the DOM (its entrance animation only
+    // fades it in), and a keystroke typed straight after the key that opened the dialog must land
+    // inside it. Focusing the first control rather than the panel itself puts the caret where
+    // typing should go. A control marked `data-autofocus` wins over "first" — use it instead of
+    // `autoFocus`, which would fire before this effect and spoil `previouslyFocused`.
+    const panel = panelRef.current;
+    const first =
+      panel?.querySelector<HTMLElement>('[data-autofocus]') ??
+      panel?.querySelector<HTMLElement>(FOCUSABLE);
+    (first ?? panel)?.focus();
 
     return () => {
-      cancelAnimationFrame(raf);
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.();

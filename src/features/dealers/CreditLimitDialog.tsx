@@ -116,7 +116,7 @@ export function CreditLimitDialog({ dealer, onClose }: CreditLimitDialogProps) {
               min={0}
               value={limit}
               onChange={(e) => setLimitValue(e.target.value)}
-              autoFocus
+              data-autofocus
             />
           )}
         </Field>

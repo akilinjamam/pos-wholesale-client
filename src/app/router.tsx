@@ -8,6 +8,7 @@ import { ALL_SCREENS, MODULES } from '@/config/modules';
 import { Login } from '@/features/auth/Login';
 import { CatalogOrganisation } from '@/features/catalog/Organisation/CatalogOrganisation';
 import { ProductsList } from '@/features/catalog/Products/ProductsList';
+import { SaleScreen } from '@/features/counter/Sale/SaleScreen';
 import { CreditHolds } from '@/features/dealers/CreditHolds';
 import { CustomersList } from '@/features/dealers/CustomersList';
 import { DealerProfile } from '@/features/dealers/DealerProfile';
@@ -74,6 +75,7 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/inventory/counts': <Counts />,
   '/inventory/serials': <Serials />,
   '/inventory/expiry': <Expiry />,
+  '/counter/sale': <SaleScreen />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,

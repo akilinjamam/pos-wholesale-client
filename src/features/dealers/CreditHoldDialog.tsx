@@ -99,7 +99,7 @@ export function CreditHoldDialog({ dealer, onClose }: CreditHoldDialogProps) {
                 setError(undefined);
               }}
               placeholder="Cheque bounced on 12 Sep"
-              autoFocus
+              data-autofocus
             />
           )}
         </Field>

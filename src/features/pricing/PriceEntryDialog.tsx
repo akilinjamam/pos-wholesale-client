@@ -281,7 +281,7 @@ export function PriceEntryDialog({ open, onClose, scope, entry }: PriceEntryDial
               type="number"
               step="0.01"
               min={0}
-              autoFocus={Boolean(entry)}
+              data-autofocus={entry ? '' : undefined}
             />
           )}
         </Field>

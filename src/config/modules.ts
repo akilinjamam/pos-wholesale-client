@@ -172,7 +172,6 @@ export const MODULES: ModuleDef[] = [
         path: '/counter/sale',
         permission: 'pos:sell',
         description: 'Walk-in cash-and-carry point of sale',
-        comingSoon: true,
       },
     ],
   },

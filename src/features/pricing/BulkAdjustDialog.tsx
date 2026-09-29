@@ -143,7 +143,7 @@ export function BulkAdjustDialog({ open, onClose, scope, scopeLabel }: BulkAdjus
                 step="0.1"
                 value={pct}
                 onChange={(e) => edit(setPct)(e.target.value)}
-                autoFocus
+                data-autofocus
               />
             )}
           </Field>
