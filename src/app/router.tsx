@@ -26,6 +26,8 @@ import { StockOnHand } from '@/features/inventory/StockOnHand';
 import { Transfers } from '@/features/inventory/Transfers';
 import { PriceLists } from '@/features/pricing/PriceLists';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
+import { NewOrderPage, OrderPage } from '@/features/sales/OrderPage';
+import { OrdersList } from '@/features/sales/OrdersList';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
 import { CompanyProfile } from '@/features/settings/Company/CompanyProfile';
 import { LocationsList } from '@/features/settings/Locations/LocationsList';
@@ -80,6 +82,7 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/counter/sale': <SaleScreen />,
   '/counter/returns': <ReturnsScreen />,
   '/counter/shift': <ShiftScreen />,
+  '/sales/orders': <OrdersList />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,
@@ -127,6 +130,24 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission permission="dealer:read">
                 <DealerProfile />
+              </RequirePermission>
+            ),
+          },
+
+          // `new` before `:id`, or the router would treat "new" as an order id.
+          {
+            path: 'sales/orders/new',
+            element: (
+              <RequirePermission permission="order:create">
+                <NewOrderPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'sales/orders/:id',
+            element: (
+              <RequirePermission permission="order:read">
+                <OrderPage />
               </RequirePermission>
             ),
           },

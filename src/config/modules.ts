@@ -138,7 +138,6 @@ export const MODULES: ModuleDef[] = [
         path: '/sales/orders',
         permission: 'order:read',
         description: 'Bulk orders from draft through to delivery',
-        comingSoon: true,
       },
     ],
   },
