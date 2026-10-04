@@ -83,7 +83,7 @@ export function ReceiptButtons({
           footer={settings.footer}
           reprint={reprint}
         />
-        <A4Invoice ref={a4Ref} sale={sale} org={org} />
+        <A4Invoice ref={a4Ref} invoice={sale.invoice} payments={sale.payments} org={org} />
       </OffScreen>
     </>
   );

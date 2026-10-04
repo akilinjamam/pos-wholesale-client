@@ -154,7 +154,6 @@ export const MODULES: ModuleDef[] = [
         path: '/dispatch/challans',
         permission: 'dispatch:read',
         description: 'Pick, pack, ship and confirm delivery',
-        comingSoon: true,
       },
     ],
   },

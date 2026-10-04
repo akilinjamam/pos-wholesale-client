@@ -44,6 +44,11 @@ const ACRONYMS = new Set([
 export function humanise(value: string): string {
   if (ACRONYMS.has(value)) return value;
 
-  const words = value.toLowerCase().replace(/_/g, ' ');
+  // camelCase too — the order timeline's actions: `startPicking` → `Start picking`. Split before
+  // lowercasing, or the word boundary is gone. SCREAMING_SNAKE never matches (no lower→upper).
+  const words = value
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

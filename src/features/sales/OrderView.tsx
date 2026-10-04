@@ -1,6 +1,6 @@
-import { Ban, CheckCircle2, ClipboardList, History, Undo2 } from 'lucide-react';
+import { Ban, CheckCircle2, ClipboardList, History, PackageSearch, Undo2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/common/PageHeader';
@@ -16,9 +16,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { money } from '@/features/dealers/creditMath';
+import { useCan } from '@/hooks/data/useAuth';
+import { useCreateDispatch } from '@/hooks/data/useDispatches';
 import { useApproveOrder, useCancelOrder, useRejectOrder } from '@/hooks/data/useOrders';
 import { humanise } from '@/lib/utils';
 
+import { OrderChallans } from './OrderChallans';
 import { ReasonDialog } from './ReasonDialog';
 
 import type { WholesaleOrderPayload } from '@shared/types';
@@ -64,6 +67,14 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
   const reject = useRejectOrder();
   const cancel = useCancelOrder();
   const pending = approve.isPending || reject.isPending || cancel.isPending;
+  const can = useCan();
+  const navigate = useNavigate();
+  const startPick = useCreateDispatch();
+  // Picking starts a challan; the order follows (CONFIRMED → PICKING) on the server.
+  const canPick =
+    can('dispatch:create') &&
+    ['CONFIRMED', 'PICKING', 'PACKED', 'PARTIALLY_DISPATCHED'].includes(order.status) &&
+    order.lines.some((l) => l.qtyOutstandingBase > 0);
 
   const offered = order.availableActions.filter((a): a is typeof a & { action: Act } =>
     (['approve', 'reject', 'cancel'] as string[]).includes(a.action),
@@ -102,6 +113,20 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
         actions={
           <>
             <StatusPill status={order.status} />
+            {canPick && (
+              <Button
+                disabled={startPick.isPending}
+                onClick={() =>
+                  startPick.mutate(
+                    { orderId: order.id },
+                    { onSuccess: (d) => navigate(`/dispatch/challans/${d.id}`) },
+                  )
+                }
+              >
+                <PackageSearch aria-hidden="true" />
+                Start picking
+              </Button>
+            )}
             {offered.map((a) => {
               const Icon = ICON[a.action];
               return (
@@ -272,6 +297,8 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
               </CardContent>
             </Card>
           )}
+
+          {can('dispatch:read') && <OrderChallans orderId={order.id} />}
 
           <Card>
             <CardHeader className="pb-3">

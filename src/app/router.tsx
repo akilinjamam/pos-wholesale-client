@@ -15,6 +15,8 @@ import { CreditHolds } from '@/features/dealers/CreditHolds';
 import { CustomersList } from '@/features/dealers/CustomersList';
 import { DealerProfile } from '@/features/dealers/DealerProfile';
 import { DealersList } from '@/features/dealers/DealersList';
+import { ChallanPage } from '@/features/dispatch/ChallanPage';
+import { ChallansList } from '@/features/dispatch/ChallansList';
 import { Home } from '@/features/home/Home';
 import { Adjustments } from '@/features/inventory/Adjustments';
 import { CountSheet } from '@/features/inventory/CountSheet';
@@ -83,6 +85,7 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/counter/returns': <ReturnsScreen />,
   '/counter/shift': <ShiftScreen />,
   '/sales/orders': <OrdersList />,
+  '/dispatch/challans': <ChallansList />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,
@@ -148,6 +151,15 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission permission="order:read">
                 <OrderPage />
+              </RequirePermission>
+            ),
+          },
+
+          {
+            path: 'dispatch/challans/:id',
+            element: (
+              <RequirePermission permission="dispatch:read">
+                <ChallanPage />
               </RequirePermission>
             ),
           },

@@ -21,11 +21,13 @@ import type {
   BillingStatus,
   CountStatus,
   CreditCheckStatus,
+  DispatchStatus,
   FulfillmentStatus,
   OrderStatus,
   DocumentStatus,
   TransferStatus,
   TrackingMode,
+  TransportMode,
   VariantAxis,
 } from './enums.js';
 import type { ProductAttrs } from './catalog.js';
@@ -978,6 +980,11 @@ export interface InvoicePayload {
   balanceMinor: number;
   paymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERPAID';
   postedAt: string | null;
+  /** Wholesale (Day 25): the order's shipping charge and dealer-paid freight. */
+  shippingMinor: number;
+  paymentTermsDays: number;
+  orderId: string | null;
+  dispatchId: string | null;
 }
 
 export interface PaymentDocPayload {
@@ -1241,4 +1248,73 @@ export interface OrderQuote {
   shippingMinor: number;
   grandTotalMinor: number;
   credit: OrderCreditPosition;
+}
+
+// ─── Dispatch (Day 24) ──────────────────────────────────────────────────────────────────
+
+export interface DispatchLinePayload {
+  id: string;
+  orderLineId: string;
+  productId: string;
+  variantId: string | null;
+  sku?: string;
+  productName?: string;
+  trackingMode?: TrackingMode;
+  baseUom?: string;
+  /** The product's packs — the pick sheet reads 30 PCS as "2 DOZ 6 PCS". */
+  packs?: { code: string; factor: number }[];
+  qtyBase: number;
+  lotNo: string | null;
+  serials: string[];
+}
+
+export interface DispatchTransportPayload {
+  mode: TransportMode;
+  vehicleNo: string | null;
+  driverName: string | null;
+  driverPhone: string | null;
+  courierName: string | null;
+  trackingNo: string | null;
+  freightMinor: number;
+  freightPaidBy: 'US' | 'DEALER';
+}
+
+export interface DispatchPayload {
+  id: string;
+  /** The challan number. Null until posted — drafts and packed challans have none. */
+  docNo: string | null;
+  status: DispatchStatus;
+  orderId: string;
+  orderDocNo: string | null;
+  dealerPartyId: string;
+  dealerName?: string;
+  locationId: string;
+  locationName?: string;
+  lines: DispatchLinePayload[];
+  packages: { boxNo: string; weightKg: number | null }[];
+  transport: DispatchTransportPayload | null;
+  /** The invoice raised on posting, when the org invoices on dispatch. */
+  invoiceId: string | null;
+  invoiceDocNo: string | null;
+  note: string | null;
+  packedAt: string | null;
+  dispatchedAt: string | null;
+  deliveredAt: string | null;
+  /** Proof of delivery (Day 25). */
+  receivedByName: string | null;
+  receivedPhone: string | null;
+  deliveryNote: string | null;
+  /** Only on a single challan, not in lists — it is an image. */
+  receivedSignatureUrl?: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** What posting a challan produced. */
+export interface DispatchPostResult {
+  dispatch: DispatchPayload;
+  order: WholesaleOrderPayload;
+  invoice: InvoicePayload | null;
 }

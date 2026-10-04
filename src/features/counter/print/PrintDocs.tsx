@@ -7,6 +7,7 @@ import { fmtDateTime, METHOD_LABELS, printableWidth } from './printHelpers';
 
 import type { ReactNode } from 'react';
 import type {
+  InvoicePayload,
   OrgPayload,
   PaymentDocPayload,
   PosSaleResult,
@@ -289,12 +290,21 @@ export const ZReport = forwardRef<
 
 // ─── A4 invoice ─────────────────────────────────────────────────────────────────────────
 
-/** The same sale on A4 — for a dealer or a customer who needs a proper invoice for their books. */
+/**
+ * An invoice on A4 — a counter sale for a customer who needs one for their books, or a wholesale
+ * invoice raised by a challan (Day 25). Every figure is the posted invoice's own; `refs` adds the
+ * documents it belongs to (order, challan) under the number.
+ */
 export const A4Invoice = forwardRef<
   HTMLDivElement,
-  { sale: PosSaleResult; org: OrgPayload | undefined }
->(function A4Invoice({ sale, org }, ref) {
-  const inv = sale.invoice;
+  {
+    invoice: InvoicePayload;
+    payments: PaymentDocPayload[];
+    org: OrgPayload | undefined;
+    refs?: { label: string; value: string }[];
+  }
+>(function A4Invoice({ invoice: inv, payments, org, refs = [] }, ref) {
+  const wholesale = inv.channel === 'WHOLESALE';
   const cell = { padding: '6px 8px', borderBottom: '1px solid #ccc' } as const;
   const num = { ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' } as const;
   return (
@@ -325,6 +335,11 @@ export const A4Invoice = forwardRef<
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>INVOICE</div>
           <div style={{ fontWeight: 600 }}>{inv.docNo}</div>
           <div>{fmtDateTime(inv.postedAt ?? inv.invoiceDate)}</div>
+          {refs.map((r) => (
+            <div key={r.label}>
+              {r.label}: {r.value}
+            </div>
+          ))}
           {inv.docNo && (
             <Barcode
               value={inv.docNo}
@@ -349,8 +364,17 @@ export const A4Invoice = forwardRef<
           {inv.customerBin && <div>BIN {inv.customerBin}</div>}
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div>Counter: {inv.locationName}</div>
-          {inv.salespersonName && <div>Served by: {inv.salespersonName}</div>}
+          <div>
+            {wholesale ? 'Ships from' : 'Counter'}: {inv.locationName}
+          </div>
+          {inv.salespersonName && (
+            <div>
+              {wholesale ? 'Salesperson' : 'Served by'}: {inv.salespersonName}
+            </div>
+          )}
+          {wholesale && (
+            <div>Terms: {inv.paymentTermsDays ? `${inv.paymentTermsDays} days` : 'cash'}</div>
+          )}
           {inv.dueDate && <div>Due: {fmtDateTime(inv.dueDate)}</div>}
         </div>
       </div>
@@ -400,11 +424,17 @@ export const A4Invoice = forwardRef<
                 <td style={num}>−{money(inv.discountMinor)}</td>
               </tr>
             )}
+            {inv.shippingMinor > 0 && (
+              <tr>
+                <td style={cell}>Shipping &amp; freight</td>
+                <td style={num}>{money(inv.shippingMinor)}</td>
+              </tr>
+            )}
             <tr style={{ fontWeight: 700 }}>
               <td style={cell}>Total</td>
               <td style={num}>{money(inv.grandTotalMinor)}</td>
             </tr>
-            {sale.payments.map((p) => (
+            {payments.map((p) => (
               <tr key={p.id}>
                 <td style={cell}>
                   Paid — {METHOD_LABELS[p.method] ?? p.method} ({p.docNo})
