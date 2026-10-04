@@ -28,6 +28,7 @@ import { StockOnHand } from '@/features/inventory/StockOnHand';
 import { Transfers } from '@/features/inventory/Transfers';
 import { PriceLists } from '@/features/pricing/PriceLists';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
+import { Approvals } from '@/features/sales/Approvals';
 import { NewOrderPage, OrderPage } from '@/features/sales/OrderPage';
 import { OrdersList } from '@/features/sales/OrdersList';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
@@ -85,6 +86,7 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/counter/returns': <ReturnsScreen />,
   '/counter/shift': <ShiftScreen />,
   '/sales/orders': <OrdersList />,
+  '/sales/approvals': <Approvals />,
   '/dispatch/challans': <ChallansList />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,

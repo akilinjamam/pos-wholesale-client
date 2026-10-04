@@ -18,6 +18,7 @@ export const orderKeys = {
   list: (params: ListOrdersParams) => ['orders', 'list', params] as const,
   detail: (id: string) => ['orders', 'detail', id] as const,
   quote: (body: QuoteOrderInput) => ['orders', 'quote', body] as const,
+  counts: (locationId?: string) => ['orders', 'counts', locationId ?? ''] as const,
 };
 
 export function useOrders(params: ListOrdersParams) {
@@ -59,8 +60,13 @@ function useSettle() {
   return (order: WholesaleOrderPayload, stockMoved = false) => {
     qc.setQueryData(orderKeys.detail(order.id), order);
     void qc.invalidateQueries({ queryKey: ['orders', 'list'] });
+    void qc.invalidateQueries({ queryKey: ['orders', 'counts'] });
     void qc.invalidateQueries({ queryKey: ['orders', 'quote'] });
-    if (stockMoved) void qc.invalidateQueries({ queryKey: stockKeys.all });
+    if (stockMoved) {
+      void qc.invalidateQueries({ queryKey: stockKeys.all });
+      // Cancel and short close also cancel the order's open challans.
+      void qc.invalidateQueries({ queryKey: ['dispatches'] });
+    }
   };
 }
 
@@ -106,5 +112,31 @@ export function useCancelOrder() {
     mutationFn: ({ id, body }: { id: string; body: CancelOrderInput }) =>
       api.cancelOrder(id, body),
     onSuccess: (order) => settle(order, true),
+  });
+}
+
+export function useOrderCounts(locationId?: string) {
+  return useQuery({
+    queryKey: orderKeys.counts(locationId),
+    queryFn: () => api.getOrderCounts({ locationId }),
+    staleTime: 15_000,
+  });
+}
+
+export function useShortCloseOrder() {
+  const settle = useSettle();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: OrderReasonInput }) =>
+      api.shortCloseOrder(id, body),
+    // Reservations released, open challans cancelled.
+    onSuccess: (order) => settle(order, true),
+  });
+}
+
+export function useCloseOrder() {
+  const settle = useSettle();
+  return useMutation({
+    mutationFn: (id: string) => api.closeOrder(id),
+    onSuccess: (order) => settle(order),
   });
 }

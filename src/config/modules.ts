@@ -139,6 +139,12 @@ export const MODULES: ModuleDef[] = [
         permission: 'order:read',
         description: 'Bulk orders from draft through to delivery',
       },
+      {
+        label: 'Approvals',
+        path: '/sales/approvals',
+        permission: 'order:approve',
+        description: 'Orders over the credit limit, waiting for a manager',
+      },
     ],
   },
   {

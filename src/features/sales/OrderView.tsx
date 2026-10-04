@@ -1,8 +1,18 @@
-import { Ban, CheckCircle2, ClipboardList, History, PackageSearch, Undo2 } from 'lucide-react';
+import {
+  Archive,
+  Ban,
+  CheckCircle2,
+  ClipboardList,
+  History,
+  PackageSearch,
+  Scissors,
+  Undo2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { PageHeader } from '@/components/common/PageHeader';
 import { StatusPill } from '@/components/common/StatusPill';
 import { Button } from '@/components/ui/button';
@@ -18,10 +28,18 @@ import {
 import { money } from '@/features/dealers/creditMath';
 import { useCan } from '@/hooks/data/useAuth';
 import { useCreateDispatch } from '@/hooks/data/useDispatches';
-import { useApproveOrder, useCancelOrder, useRejectOrder } from '@/hooks/data/useOrders';
+import {
+  useApproveOrder,
+  useCancelOrder,
+  useCloseOrder,
+  useRejectOrder,
+  useShortCloseOrder,
+} from '@/hooks/data/useOrders';
 import { humanise } from '@/lib/utils';
 
 import { OrderChallans } from './OrderChallans';
+import { orderProgress } from './orderProgress';
+import { ProgressBar } from './ProgressBar';
 import { ReasonDialog } from './ReasonDialog';
 
 import type { WholesaleOrderPayload } from '@shared/types';
@@ -31,10 +49,11 @@ import type { WholesaleOrderPayload } from '@shared/types';
  *
  * Every figure is the stored one — a confirmed order's prices do not move when a price list does.
  * The action buttons are the server's `availableActions` for this user, so a button is never shown
- * that the state machine would refuse. Dispatch actions (pick, pack, post) arrive with Day 24.
+ * that the state machine would refuse. Picking starts a challan (Day 25); short close and close
+ * finish an order (Day 26).
  */
 
-type Act = 'approve' | 'reject' | 'cancel';
+type Act = 'approve' | 'reject' | 'cancel' | 'shortClose' | 'close';
 
 const ACTS: Record<
   Act,
@@ -57,16 +76,55 @@ const ACTS: Record<
     description: 'Every unit reserved for it is released back to available stock.',
     destructive: true,
   },
+  shortClose: {
+    label: 'Short close',
+    title: 'Short-close this order?',
+    // Replaced with the exact quantities when the dialog opens — see `shortCloseText`.
+    description: '',
+    destructive: true,
+  },
+  close: {
+    label: 'Close order',
+    title: 'Close this order?',
+    description: 'Everything was delivered. The order becomes a closed record.',
+  },
 };
 
-const ICON: Record<Act, typeof Ban> = { approve: CheckCircle2, reject: Undo2, cancel: Ban };
+const ICON: Record<Act, typeof Ban> = {
+  approve: CheckCircle2,
+  reject: Undo2,
+  cancel: Ban,
+  shortClose: Scissors,
+  close: Archive,
+};
+
+/** What a short close will do to this order, in its own numbers. */
+function shortCloseText(order: WholesaleOrderPayload): string {
+  const p = orderProgress(order);
+  const left = p.toShipBase - p.dispatchedBase;
+  return (
+    `${p.dispatchedBase} of ${p.toShipBase} units have shipped. The other ${left} are cancelled for good` +
+    (p.reservedBase
+      ? `, the ${p.reservedBase} reserved for them go back to available stock`
+      : '') +
+    ', and any challan still being picked or packed is cancelled. What shipped stays invoiced.'
+  );
+}
 
 export function OrderView({ order }: { order: WholesaleOrderPayload }) {
   const [acting, setActing] = useState<Act | null>(null);
   const approve = useApproveOrder();
   const reject = useRejectOrder();
   const cancel = useCancelOrder();
-  const pending = approve.isPending || reject.isPending || cancel.isPending;
+  const shortClose = useShortCloseOrder();
+  const close = useCloseOrder();
+  const pending =
+    approve.isPending ||
+    reject.isPending ||
+    cancel.isPending ||
+    shortClose.isPending ||
+    close.isPending;
+  const progress = orderProgress(order);
   const can = useCan();
   const navigate = useNavigate();
   const startPick = useCreateDispatch();
@@ -77,7 +135,7 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
     order.lines.some((l) => l.qtyOutstandingBase > 0);
 
   const offered = order.availableActions.filter((a): a is typeof a & { action: Act } =>
-    (['approve', 'reject', 'cancel'] as string[]).includes(a.action),
+    (['approve', 'reject', 'cancel', 'shortClose', 'close'] as string[]).includes(a.action),
   );
 
   const run = (act: Act, reason: string) => {
@@ -93,6 +151,13 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
       );
     } else if (act === 'reject') {
       reject.mutate({ id, body: { reason } }, { onSuccess: done('Sent back to draft') });
+    } else if (act === 'shortClose') {
+      shortClose.mutate(
+        { id, body: { reason } },
+        { onSuccess: done('Order short-closed — the rest released') },
+      );
+    } else if (act === 'close') {
+      close.mutate(id, { onSuccess: done('Order closed') });
     } else {
       cancel.mutate(
         { id, body: reason ? { reason } : {} },
@@ -194,6 +259,9 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Reserved</TableHead>
                     <TableHead className="text-right">Dispatched</TableHead>
+                    {progress.cancelledBase > 0 && (
+                      <TableHead className="text-right">Cancelled</TableHead>
+                    )}
                     <TableHead className="text-right">Unit price</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
@@ -219,6 +287,11 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
                       <TableCell className="text-right tabular-nums">
                         {l.qtyDispatchedBase}
                       </TableCell>
+                      {progress.cancelledBase > 0 && (
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {l.qtyCancelledBase || '—'}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right tabular-nums">
                         {money(l.unitPriceMinor)}
                         {l.priceOverridden && (
@@ -242,6 +315,31 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
         </div>
 
         <div className="space-y-4">
+          {order.docNo && order.status !== 'CANCELLED' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Progress</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <ProgressBar
+                  label="Shipped"
+                  value={progress.dispatched}
+                  detail={`${progress.dispatchedBase} of ${progress.toShipBase}`}
+                />
+                <ProgressBar
+                  label="Billed"
+                  value={progress.invoiced}
+                  detail={`${progress.invoicedBase} of ${progress.toShipBase}`}
+                />
+                {progress.cancelledBase > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {progress.cancelledBase} unit(s) short-closed — not shipped, not billed.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Totals</CardTitle>
@@ -327,10 +425,23 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
         </div>
       </div>
 
-      {acting && (
+      {acting === 'close' && (
+        <ConfirmDialog
+          open
+          onClose={() => setActing(null)}
+          onConfirm={() => run('close', '')}
+          pending={pending}
+          title={ACTS.close.title}
+          description={ACTS.close.description}
+          confirmLabel={ACTS.close.label}
+        />
+      )}
+      {acting && acting !== 'close' && (
         <ReasonDialog
           title={ACTS[acting].title}
-          description={ACTS[acting].description}
+          description={
+            acting === 'shortClose' ? shortCloseText(order) : ACTS[acting].description
+          }
           confirmLabel={ACTS[acting].label}
           optional={!offered.find((a) => a.action === acting)?.requiresReason}
           destructive={ACTS[acting].destructive}

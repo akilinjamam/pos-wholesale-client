@@ -8,19 +8,21 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { StatusPill } from '@/components/common/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { money } from '@/features/dealers/creditMath';
 import { LocationFilter } from '@/features/inventory/LocationFilter';
 import { usePermission } from '@/hooks/data/useAuth';
-import { useOrders } from '@/hooks/data/useOrders';
+import { useOrderCounts, useOrders } from '@/hooks/data/useOrders';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { humanise } from '@/lib/utils';
+import { cn, humanise } from '@/lib/utils';
+
+import { orderProgress } from './orderProgress';
+import { ProgressBar } from './ProgressBar';
 
 import { ORDER_STATUSES } from '@shared/enums';
 
 import type { Column, SortState } from '@/components/common/DataTable';
 import type { OrderStatus } from '@shared/enums';
-import type { WholesaleOrderPayload } from '@shared/types';
+import type { OrderCounts, WholesaleOrderPayload } from '@shared/types';
 
 /**
  * Wholesale orders, newest first — the way into the builder and back to any order. The status
@@ -35,6 +37,7 @@ export function OrdersList() {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortState>({ field: 'orderDate', order: 'desc' });
   const q = useDebouncedValue(text.trim(), 250);
+  const counts = useOrderCounts(locationId || undefined);
 
   const { data, isLoading, isFetching } = useOrders({
     page,
@@ -81,6 +84,26 @@ export function OrdersList() {
       cell: (o) => <StatusPill status={o.status} />,
     },
     {
+      key: 'progress',
+      header: 'Shipped · billed',
+      cell: (o) => {
+        if (
+          o.status === 'DRAFT' ||
+          o.status === 'PENDING_APPROVAL' ||
+          o.status === 'CANCELLED'
+        ) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const p = orderProgress(o);
+        return (
+          <div className="flex gap-3">
+            <ProgressBar compact label="Shipped" value={p.dispatched} />
+            <ProgressBar compact label="Billed" value={p.invoiced} />
+          </div>
+        );
+      },
+    },
+    {
       key: 'grandTotalMinor',
       header: 'Total',
       sortable: true,
@@ -104,6 +127,14 @@ export function OrdersList() {
             </Button>
           )
         }
+      />
+      <StatusTabs
+        value={status}
+        counts={counts.data}
+        onChange={(st) => {
+          setStatus(st);
+          setPage(1);
+        }}
       />
       <div className="flex flex-wrap gap-2">
         <div className="relative w-64">
@@ -130,22 +161,6 @@ export function OrdersList() {
           }}
           allLabel="Any of my locations"
         />
-        <Select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as '' | OrderStatus);
-            setPage(1);
-          }}
-          className="w-48"
-          aria-label="Status"
-        >
-          <option value="">Any status</option>
-          {ORDER_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {humanise(s)}
-            </option>
-          ))}
-        </Select>
       </div>
       <DataTable
         columns={columns}
@@ -176,6 +191,48 @@ export function OrdersList() {
           />
         }
       />
+    </div>
+  );
+}
+
+/**
+ * The board: every status with how many orders sit in it, in lifecycle order. Click to filter;
+ * "All" clears. Empty statuses stay visible but quiet, so the strip does not jump as orders move.
+ */
+function StatusTabs({
+  value,
+  counts,
+  onChange,
+}: {
+  value: '' | OrderStatus;
+  counts: OrderCounts | undefined;
+  onChange: (s: '' | OrderStatus) => void;
+}) {
+  const tab = (key: '' | OrderStatus, label: string, n: number | undefined) => (
+    <button
+      key={key || 'all'}
+      type="button"
+      role="tab"
+      aria-selected={value === key}
+      onClick={() => onChange(key)}
+      className={cn(
+        'flex min-w-[6.5rem] flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors',
+        value === key ? 'border-primary bg-primary/5' : 'hover:bg-muted/60',
+        key && n === 0 && value !== key && 'opacity-50',
+      )}
+    >
+      <span className="text-xl font-semibold tabular-nums">{n ?? '…'}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </button>
+  );
+  return (
+    <div
+      role="tablist"
+      aria-label="Orders by status"
+      className="flex gap-2 overflow-x-auto pb-1"
+    >
+      {tab('', 'All', counts?.total)}
+      {ORDER_STATUSES.map((st) => tab(st, humanise(st), counts?.byStatus[st]))}
     </div>
   );
 }

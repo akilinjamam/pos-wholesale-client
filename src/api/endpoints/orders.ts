@@ -9,7 +9,7 @@ import type {
   UpdateOrderInput,
 } from '@shared/orders';
 import type { FulfillmentStatus, OrderStatus } from '@shared/enums';
-import type { OrderQuote, Paginated, WholesaleOrderPayload } from '@shared/types';
+import type { OrderCounts, OrderQuote, Paginated, WholesaleOrderPayload } from '@shared/types';
 
 /** Wholesale orders (Day 22 server, Day 23 builder). */
 
@@ -72,3 +72,17 @@ export const rejectOrder = (id: string, body: OrderReasonInput) =>
   postData<WholesaleOrderPayload>(`/orders/${id}/reject`, body);
 export const cancelOrder = (id: string, body: CancelOrderInput) =>
   postData<WholesaleOrderPayload>(`/orders/${id}/cancel`, body);
+
+// ─── Day 26 ─────────────────────────────────────────────────────────────────────────────
+
+/** Orders per status — the board's tabs. */
+export const getOrderCounts = (params: { locationId?: string }) =>
+  getData<OrderCounts>('/orders/counts', params);
+
+/** Ship what we have, forget the rest: releases what is still reserved. Needs a reason. */
+export const shortCloseOrder = (id: string, body: OrderReasonInput) =>
+  postData<WholesaleOrderPayload>(`/orders/${id}/short-close`, body);
+
+/** A delivered order is done. */
+export const closeOrder = (id: string) =>
+  postData<WholesaleOrderPayload>(`/orders/${id}/close`, {});
