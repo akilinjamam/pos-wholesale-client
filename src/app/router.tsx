@@ -28,6 +28,10 @@ import { StockOnHand } from '@/features/inventory/StockOnHand';
 import { Transfers } from '@/features/inventory/Transfers';
 import { PriceLists } from '@/features/pricing/PriceLists';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
+import { CollectionSheetPage } from '@/features/receivables/CollectionSheetPage';
+import { ReceiptEntry } from '@/features/receivables/ReceiptEntry';
+import { ReceiptsList } from '@/features/receivables/ReceiptsList';
+import { StatementPage } from '@/features/receivables/StatementPage';
 import { Approvals } from '@/features/sales/Approvals';
 import { NewOrderPage, OrderPage } from '@/features/sales/OrderPage';
 import { OrdersList } from '@/features/sales/OrdersList';
@@ -86,6 +90,10 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/counter/returns': <ReturnsScreen />,
   '/counter/shift': <ShiftScreen />,
   '/sales/orders': <OrdersList />,
+  '/receivables/receipts': <ReceiptsList />,
+  '/receivables/unapplied': <ReceiptsList unapplied />,
+  '/receivables/statement': <StatementPage />,
+  '/receivables/collection': <CollectionSheetPage />,
   '/sales/approvals': <Approvals />,
   '/dispatch/challans': <ChallansList />,
   '/dealers/list': <DealersList />,
@@ -153,6 +161,15 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission permission="order:read">
                 <OrderPage />
+              </RequirePermission>
+            ),
+          },
+
+          {
+            path: 'receivables/receipts/new',
+            element: (
+              <RequirePermission permission="payment:receipt">
+                <ReceiptEntry />
               </RequirePermission>
             ),
           },

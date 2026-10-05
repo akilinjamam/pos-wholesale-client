@@ -72,6 +72,19 @@ const dateTime = new Intl.DateTimeFormat('en-GB', {
 export const fmtDateTime = (iso: string | null | undefined) =>
   iso ? dateTime.format(new Date(iso)) : '—';
 
+const dateOnly = new Intl.DateTimeFormat('en-GB', {
+  timeZone: env.timezone,
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+/**
+ * The date alone, in the org's zone. A formatter of its own — never `fmtDateTime(..).slice()`:
+ * en-GB spells September "Sept", so a fixed-width cut takes the year with it.
+ */
+export const fmtDate = (iso: string | null | undefined) =>
+  iso ? dateOnly.format(new Date(iso)) : '—';
+
 export const METHOD_LABELS: Record<string, string> = {
   CASH: 'Cash',
   CARD: 'Card',

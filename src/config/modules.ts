@@ -219,9 +219,26 @@ export const MODULES: ModuleDef[] = [
       {
         label: 'Receipts',
         path: '/receivables/receipts',
-        permission: 'payment:receipt',
-        description: 'Collections allocated against open invoices',
-        comingSoon: true,
+        permission: 'payment:read',
+        description: 'Money received from dealers, and the invoices it paid',
+      },
+      {
+        label: 'Unapplied receipts',
+        path: '/receivables/unapplied',
+        permission: 'payment:read',
+        description: 'Money on account, waiting to be set against invoices',
+      },
+      {
+        label: 'Statement',
+        path: '/receivables/statement',
+        permission: 'ledger:read',
+        description: "A dealer's account for a period, with the running balance",
+      },
+      {
+        label: 'Collection sheet',
+        path: '/receivables/collection',
+        permission: 'payment:read',
+        description: 'Who owes, how overdue — printed for the collector',
       },
       {
         label: 'Ageing',

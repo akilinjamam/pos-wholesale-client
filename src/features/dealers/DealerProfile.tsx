@@ -37,6 +37,8 @@ import { PriceGrid } from '../pricing/PriceGrid';
 
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { StatementView } from '@/features/receivables/StatementView';
+
 import type { PartyPayload } from '@shared/types';
 
 /**
@@ -63,11 +65,6 @@ type TabKey = (typeof TABS)[number];
 
 /** The tabs a later day fills, and what fills them. */
 const LATER: Partial<Record<TabKey, { icon: LucideIcon; title: string; day: string }>> = {
-  ledger: {
-    icon: BookOpen,
-    title: 'The ledger starts with opening balances',
-    day: 'Every debit and credit, with a running balance, from Day 27.',
-  },
   invoices: {
     icon: FileText,
     title: 'No invoices yet',
@@ -97,6 +94,7 @@ export function DealerProfile() {
   const canUpdate = usePermission('dealer:update');
   const canSetCredit = usePermission('dealer:setCreditLimit');
   const canHold = usePermission('dealer:creditHold');
+  const canReadLedger = usePermission('ledger:read');
 
   const { data: dealer, isLoading, isError } = useParty('DEALER', id);
 
@@ -252,6 +250,22 @@ export function DealerProfile() {
         {tab === 'info' && <InfoTab dealer={dealer} />}
         {tab === 'addresses' && <AddressesTab dealer={dealer} />}
         {tab === 'pricing' && <PricingTab dealer={dealer} />}
+        {tab === 'ledger' &&
+          (canReadLedger ? (
+            <Card>
+              <CardContent className="pt-6">
+                <StatementView partyId={dealer.id} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <EmptyState
+                icon={BookOpen}
+                title="The ledger is not yours to see"
+                description="Reading a dealer's account needs the ledger:read permission."
+              />
+            </Card>
+          ))}
         {later && (
           <Card>
             <EmptyState icon={later.icon} title={later.title} description={later.day} />
