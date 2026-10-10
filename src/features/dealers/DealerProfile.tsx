@@ -2,14 +2,11 @@ import {
   ArrowLeft,
   BadgePercent,
   BookOpen,
-  FileText,
   Gauge,
   MapPin,
   Pencil,
-  RotateCcw,
   ShieldAlert,
   ShieldCheck,
-  ShoppingCart,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -31,11 +28,11 @@ import { CreditHoldDialog } from './CreditHoldDialog';
 import { CreditLimitDialog } from './CreditLimitDialog';
 import { CreditUsage, DealerStatus, HoldBanner } from './credit';
 import { money } from './creditMath';
+import { DealerInvoicesTab, DealerOrdersTab, DealerReturnsTab } from './DealerTabs';
 import { PartyEditor } from './PartyEditor';
 import { PriceCheck } from '../pricing/PriceCheck';
 import { PriceGrid } from '../pricing/PriceGrid';
 
-import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { StatementView } from '@/features/receivables/StatementView';
 
@@ -62,25 +59,6 @@ const TABS = [
   'returns',
 ] as const;
 type TabKey = (typeof TABS)[number];
-
-/** The tabs a later day fills, and what fills them. */
-const LATER: Partial<Record<TabKey, { icon: LucideIcon; title: string; day: string }>> = {
-  invoices: {
-    icon: FileText,
-    title: 'No invoices yet',
-    day: 'Wholesale invoices are raised on dispatch from Day 24.',
-  },
-  orders: {
-    icon: ShoppingCart,
-    title: 'No orders yet',
-    day: 'Wholesale orders arrive on Day 22, and the order builder on Day 23.',
-  },
-  returns: {
-    icon: RotateCcw,
-    title: 'No returns yet',
-    day: 'Sales returns and credit notes arrive on Day 36.',
-  },
-};
 
 function isTab(value: string | null): value is TabKey {
   return (TABS as readonly string[]).includes(value ?? '');
@@ -139,7 +117,6 @@ export function DealerProfile() {
   }
 
   const d = dealer.dealer;
-  const later = LATER[tab];
 
   return (
     <div className="space-y-5">
@@ -266,11 +243,9 @@ export function DealerProfile() {
               />
             </Card>
           ))}
-        {later && (
-          <Card>
-            <EmptyState icon={later.icon} title={later.title} description={later.day} />
-          </Card>
-        )}
+        {tab === 'invoices' && <DealerInvoicesTab partyId={dealer.id} />}
+        {tab === 'orders' && <DealerOrdersTab partyId={dealer.id} />}
+        {tab === 'returns' && <DealerReturnsTab partyId={dealer.id} />}
       </Tabs>
 
       <PartyEditor

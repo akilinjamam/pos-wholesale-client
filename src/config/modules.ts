@@ -151,6 +151,13 @@ export const MODULES: ModuleDef[] = [
         permission: 'order:approve',
         description: 'Who lent past a credit limit, why, and where the dealer stands now',
       },
+      {
+        label: 'Returns',
+        path: '/sales/returns',
+        permission: 'return:read',
+        description:
+          'Goods back from dealers — restocked where you choose, settled by credit note',
+      },
     ],
   },
   {
@@ -203,14 +210,13 @@ export const MODULES: ModuleDef[] = [
     path: '/billing',
     icon: FileText,
     permission: 'invoice:read',
-    landsOnDay: 20,
+    landsOnDay: 36,
     screens: [
       {
         label: 'Invoices',
         path: '/billing/invoices',
         permission: 'invoice:read',
-        description: 'Wholesale and counter invoices',
-        comingSoon: true,
+        description: 'Wholesale and counter invoices — find, open, reprint',
       },
     ],
   },
@@ -233,6 +239,12 @@ export const MODULES: ModuleDef[] = [
         path: '/receivables/unapplied',
         permission: 'payment:read',
         description: 'Money on account, waiting to be set against invoices',
+      },
+      {
+        label: 'Credit notes',
+        path: '/receivables/credit-notes',
+        permission: 'creditNote:read',
+        description: 'Credit for goods returned, and the invoices it settled',
       },
       {
         label: 'Statement',
@@ -375,9 +387,62 @@ export const MODULES: ModuleDef[] = [
     label: 'Reports',
     path: '/reports',
     icon: Receipt,
-    permission: 'report:sales',
+    // `null`, as for Settings: each report carries its own permission — a store keeper with only
+    // `report:stock` must still reach stock valuation. The sidebar drops the module for anyone
+    // who can open none of them.
+    permission: null,
     landsOnDay: 37,
-    screens: [],
+    screens: [
+      {
+        label: 'Sales',
+        path: '/reports/sales',
+        permission: 'report:sales',
+        description:
+          'By dealer, product, brand, salesperson or period — and channel comparison',
+      },
+      {
+        label: 'Gross margin',
+        path: '/reports/margin',
+        permission: 'report:profit',
+        description: 'Net sales against the cost of what was sold',
+      },
+      {
+        label: 'Stock valuation',
+        path: '/reports/stock-valuation',
+        permission: 'report:stock',
+        description: 'What is on the shelves, at moving-average cost',
+      },
+      {
+        label: 'Dead stock',
+        path: '/reports/dead-stock',
+        permission: 'report:stock',
+        description: 'On the shelf and not sold in months — or ever',
+      },
+      {
+        label: 'Dispatch register',
+        path: '/reports/dispatch-register',
+        permission: 'report:sales',
+        description: 'Every challan that left, with its invoice and transport',
+      },
+      {
+        label: 'Purchase register',
+        path: '/reports/purchase-register',
+        permission: 'report:purchase',
+        description: 'Supplier bills and returns — paid and owed',
+      },
+      {
+        label: 'Collection register',
+        path: '/reports/collections',
+        permission: 'report:receivables',
+        description: 'Money received from dealers, by method',
+      },
+      {
+        label: 'POS shift summary',
+        path: '/reports/shifts',
+        permission: 'report:pos',
+        description: 'Shifts closed: takings, returns and cash variance',
+      },
+    ],
   },
   {
     key: 'settings',

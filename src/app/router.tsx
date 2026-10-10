@@ -46,9 +46,21 @@ import { ReceiptsList } from '@/features/receivables/ReceiptsList';
 import { StatementPage } from '@/features/receivables/StatementPage';
 import { Approvals } from '@/features/sales/Approvals';
 import { CreditOverrides } from '@/features/sales/CreditOverrides';
+import { ReturnEntry } from '@/features/sales/ReturnEntry';
+import { SalesReturns } from '@/features/sales/SalesReturns';
+import { CreditNotes } from '@/features/receivables/CreditNotes';
 import { NewOrderPage, OrderPage } from '@/features/sales/OrderPage';
 import { OrdersList } from '@/features/sales/OrdersList';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
+import { InvoicePage } from '@/features/billing/InvoicePage';
+import {
+  CollectionRegisterScreen,
+  DispatchRegisterScreen,
+  ShiftSummaryScreen,
+} from '@/features/reports/RegisterReports';
+import { SalesReportScreen } from '@/features/reports/SalesReportScreen';
+import { DeadStockScreen, StockValuationScreen } from '@/features/reports/StockReports';
+import { InvoicesList } from '@/features/billing/InvoicesList';
 import { CompanyProfile } from '@/features/settings/Company/CompanyProfile';
 import { LocationsList } from '@/features/settings/Locations/LocationsList';
 import { RolesList } from '@/features/settings/Roles/RolesList';
@@ -111,6 +123,17 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/receivables/ageing': <AgeingPage />,
   '/sales/approvals': <Approvals />,
   '/sales/credit-overrides': <CreditOverrides />,
+  '/sales/returns': <SalesReturns />,
+  '/billing/invoices': <InvoicesList />,
+  '/reports/sales': <SalesReportScreen />,
+  '/reports/margin': <SalesReportScreen margin />,
+  '/reports/stock-valuation': <StockValuationScreen />,
+  '/reports/dead-stock': <DeadStockScreen />,
+  '/reports/dispatch-register': <DispatchRegisterScreen />,
+  '/reports/purchase-register': <PurchaseRegister />,
+  '/reports/collections': <CollectionRegisterScreen />,
+  '/reports/shifts': <ShiftSummaryScreen />,
+  '/receivables/credit-notes': <CreditNotes />,
   '/dispatch/challans': <ChallansList />,
   '/purchase/orders': <PurchaseOrders />,
   '/purchase/grn': <GoodsReceipts />,
@@ -189,6 +212,22 @@ export const router = createBrowserRouter([
             ),
           },
 
+          {
+            path: 'billing/invoices/:id',
+            element: (
+              <RequirePermission permission="invoice:read">
+                <InvoicePage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'sales/returns/new',
+            element: (
+              <RequirePermission permission="return:create">
+                <ReturnEntry />
+              </RequirePermission>
+            ),
+          },
           {
             path: 'receivables/receipts/new',
             element: (
