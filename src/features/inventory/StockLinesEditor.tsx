@@ -13,6 +13,7 @@ import { emptyLine, parseSerials } from './stockLines';
 import { packFactor, uomOptions } from '@shared/uom';
 
 import type { LineDraft } from './stockLines';
+import type { ReactNode } from 'react';
 
 /**
  * The line grid for adjustments and transfers.
@@ -27,9 +28,9 @@ import type { LineDraft } from './stockLines';
  * Server field errors (`lines.2.serials`) arrive keyed by path and are shown on that row's field.
  */
 
-export interface StockLinesEditorProps {
-  lines: LineDraft[];
-  onChange: (lines: LineDraft[]) => void;
+export interface StockLinesEditorProps<T extends LineDraft = LineDraft> {
+  lines: T[];
+  onChange: (lines: T[]) => void;
   /** Adjustments allow − (written off); transfers only move positive quantities. */
   signed: boolean;
   /** Ask for expiry/mfg dates on positive lot lines — stock arriving creates the lot. */
@@ -37,17 +38,32 @@ export interface StockLinesEditorProps {
   /** Server field errors keyed by path, e.g. `lines.0.qty`. */
   errors: Record<string, string>;
   disabled?: boolean;
+  /** A new blank line — for documents whose lines carry more than a stock line (a receipt's cost). */
+  newLine?: () => T;
+  /** More fields under a row: cost, discount, QC — whatever the document adds. */
+  renderExtra?: (line: T, index: number, onChange: (patch: Partial<T>) => void) => ReactNode;
+  /** A row whose item is fixed — a receipt line filling a PO line: only quantities and capture. */
+  isLocked?: (line: T) => boolean;
+  /** Whether rows may be added. Removing stays possible while more than one is left. */
+  canAddLines?: boolean;
+  /** Ask for lots and serials. Off for a purchase order: nothing has arrived to have them yet. */
+  capture?: boolean;
 }
 
-export function StockLinesEditor({
+export function StockLinesEditor<T extends LineDraft = LineDraft>({
   lines,
   onChange,
   signed,
   inboundLotDates,
   errors,
   disabled,
-}: StockLinesEditorProps) {
-  const update = (key: number, patch: Partial<LineDraft>) =>
+  newLine,
+  renderExtra,
+  isLocked,
+  canAddLines = true,
+  capture = true,
+}: StockLinesEditorProps<T>) {
+  const update = (key: number, patch: Partial<T>) =>
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   return (
@@ -61,25 +77,29 @@ export function StockLinesEditor({
           inboundLotDates={inboundLotDates}
           errors={errors}
           disabled={disabled}
-          onChange={(patch) => update(line.key, patch)}
+          locked={isLocked?.(line) ?? false}
+          capture={capture}
+          onChange={(patch) => update(line.key, patch as Partial<T>)}
           onRemove={
             lines.length > 1
               ? () => onChange(lines.filter((l) => l.key !== line.key))
               : undefined
           }
-        />
+        >
+          {renderExtra?.(line, i, (patch) => update(line.key, patch))}
+        </LineRow>
       ))}
       {errors.lines && (
         <p role="alert" className="text-sm font-medium text-destructive">
           {errors.lines}
         </p>
       )}
-      {!disabled && (
+      {!disabled && canAddLines && (
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => onChange([...lines, emptyLine()])}
+          onClick={() => onChange([...lines, newLine ? newLine() : (emptyLine() as T)])}
         >
           <Plus aria-hidden="true" />
           Add line
@@ -96,8 +116,11 @@ function LineRow({
   inboundLotDates,
   errors,
   disabled,
+  locked,
+  capture,
   onChange,
   onRemove,
+  children,
 }: {
   index: number;
   line: LineDraft;
@@ -105,8 +128,11 @@ function LineRow({
   inboundLotDates: boolean;
   errors: Record<string, string>;
   disabled?: boolean;
+  locked: boolean;
+  capture: boolean;
   onChange: (patch: Partial<LineDraft>) => void;
   onRemove?: () => void;
+  children?: ReactNode;
 }) {
   const p = line.product;
   const { data: variants } = useVariants(
@@ -136,7 +162,7 @@ function LineRow({
               })
             }
             invalid={Boolean(err('productId'))}
-            disabled={disabled}
+            disabled={disabled || locked}
             aria-describedby={undefined}
           />
           {err('productId') && (
@@ -151,7 +177,7 @@ function LineRow({
               onChange={(e) => onChange({ variantId: e.target.value })}
               aria-label="Variant"
               aria-invalid={Boolean(err('variantId'))}
-              disabled={disabled}
+              disabled={disabled || locked}
             >
               <option value="">Choose variant…</option>
               {(variants?.items ?? []).map((v) => (
@@ -218,7 +244,7 @@ function LineRow({
         )}
       </div>
 
-      {p?.trackingMode === 'LOT' && (
+      {capture && p?.trackingMode === 'LOT' && (
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <Input
@@ -266,7 +292,7 @@ function LineRow({
         </div>
       )}
 
-      {p?.trackingMode === 'SERIAL' && (
+      {capture && p?.trackingMode === 'SERIAL' && (
         <div>
           <Textarea
             value={line.serialsText}
@@ -292,6 +318,8 @@ function LineRow({
           </p>
         </div>
       )}
+
+      {children}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useParties } from '@/hooks/data/useParties';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { cn } from '@/lib/utils';
 
+import type { PartyRole } from '@shared/enums';
 import type { PartyPayload } from '@shared/types';
 
 /**
@@ -22,6 +23,9 @@ export interface DealerPickerProps {
   id?: string;
   /** What `null` means where this picker is used. */
   emptyLabel?: string;
+  /** Dealers by default; the purchase screens pick suppliers with the same control. */
+  role?: Extract<PartyRole, 'DEALER' | 'SUPPLIER'>;
+  disabled?: boolean;
 }
 
 const RESULTS = 10;
@@ -30,8 +34,11 @@ export function DealerPicker({
   value,
   onChange,
   id,
-  emptyLabel = 'Search dealers…',
+  emptyLabel,
+  role = 'DEALER',
+  disabled,
 }: DealerPickerProps) {
+  const noun = role === 'SUPPLIER' ? 'supplier' : 'dealer';
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
@@ -39,7 +46,7 @@ export function DealerPicker({
   const [active, setActive] = useState(0);
 
   const q = useDebouncedValue(text.trim(), 250);
-  const { data, isFetching } = useParties('DEALER', {
+  const { data, isFetching } = useParties(role, {
     q: q || undefined,
     limit: RESULTS,
     isActive: true,
@@ -66,7 +73,8 @@ export function DealerPicker({
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          aria-label="Clear dealer"
+          aria-label={`Clear ${noun}`}
+          disabled={disabled}
           onClick={() => {
             onChange(null);
             requestAnimationFrame(() => inputRef.current?.focus());
@@ -93,7 +101,8 @@ export function DealerPicker({
         aria-autocomplete="list"
         aria-activedescendant={open && options[active] ? `${listId}-${active}` : undefined}
         value={text}
-        placeholder={emptyLabel}
+        placeholder={emptyLabel ?? `Search ${noun}s…`}
+        disabled={disabled}
         autoComplete="off"
         className="pl-9"
         onChange={(e) => {
@@ -134,7 +143,7 @@ export function DealerPicker({
         >
           {options.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">
-              {isFetching ? 'Searching…' : q ? 'No dealer matches' : 'Start typing to search'}
+              {isFetching ? 'Searching…' : q ? `No ${noun} matches` : 'Start typing to search'}
             </li>
           ) : (
             options.map((d, index) => (
@@ -153,7 +162,7 @@ export function DealerPicker({
               >
                 <span className="min-w-0 flex-1 truncate">{d.displayName ?? d.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {d.dealer?.priceTierName ?? 'no tier'}
+                  {role === 'SUPPLIER' ? d.code : (d.dealer?.priceTierName ?? 'no tier')}
                 </span>
                 {index === active && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
               </li>

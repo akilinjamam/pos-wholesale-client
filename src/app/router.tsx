@@ -27,6 +27,12 @@ import { StockLedger } from '@/features/inventory/StockLedger';
 import { StockOnHand } from '@/features/inventory/StockOnHand';
 import { Transfers } from '@/features/inventory/Transfers';
 import { PriceLists } from '@/features/pricing/PriceLists';
+import { GoodsReceipts } from '@/features/purchase/GoodsReceipts';
+import { GrnPage, NewGrnPage } from '@/features/purchase/GrnPage';
+import { NewPoPage, PoPage } from '@/features/purchase/PoPage';
+import { PurchaseOrders } from '@/features/purchase/PurchaseOrders';
+import { PurchaseReturns } from '@/features/purchase/PurchaseReturns';
+import { Reorder } from '@/features/purchase/Reorder';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
 import { AgeingPage } from '@/features/receivables/AgeingPage';
 import { ChequeRegister } from '@/features/receivables/ChequeRegister';
@@ -102,6 +108,10 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/sales/approvals': <Approvals />,
   '/sales/credit-overrides': <CreditOverrides />,
   '/dispatch/challans': <ChallansList />,
+  '/purchase/orders': <PurchaseOrders />,
+  '/purchase/grn': <GoodsReceipts />,
+  '/purchase/returns': <PurchaseReturns />,
+  '/purchase/reorder': <Reorder />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,
@@ -185,6 +195,39 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission permission="dispatch:read">
                 <ChallanPage />
+              </RequirePermission>
+            ),
+          },
+
+          {
+            path: 'purchase/orders/new',
+            element: (
+              <RequirePermission permission="po:create">
+                <NewPoPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'purchase/orders/:id',
+            element: (
+              <RequirePermission permission="po:read">
+                <PoPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'purchase/grn/new',
+            element: (
+              <RequirePermission permission="grn:create">
+                <NewGrnPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'purchase/grn/:id',
+            element: (
+              <RequirePermission permission="grn:read">
+                <GrnPage />
               </RequirePermission>
             ),
           },

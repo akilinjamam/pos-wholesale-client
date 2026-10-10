@@ -1,5 +1,6 @@
 import { CalendarClock } from 'lucide-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -23,9 +24,12 @@ import { LocationFilter } from './LocationFilter';
  * Soonest first. A lot with nothing left on the shelf is not a problem and is not listed.
  */
 const WINDOWS = [30, 60, 90, 180] as const;
+/** Every lot in stock, however far off — the lot register a receipt links to. */
+const ALL_LOTS = 3650;
 
 export function Expiry() {
-  const [withinDays, setWithinDays] = useState<number>(90);
+  const [params] = useSearchParams();
+  const [withinDays, setWithinDays] = useState<number>(Number(params.get('within')) || 90);
   const [locationId, setLocationId] = useState('');
   const { data, isLoading } = useExpiringLots(withinDays, locationId || undefined);
   const lots = data ?? [];
@@ -49,6 +53,7 @@ export function Expiry() {
               Expiring within {d} days
             </option>
           ))}
+          <option value={ALL_LOTS}>All lots in stock</option>
         </Select>
         <LocationFilter value={locationId} onChange={setLocationId} />
       </div>
@@ -59,7 +64,11 @@ export function Expiry() {
         <EmptyState
           icon={CalendarClock}
           title="Nothing expiring"
-          description={`No lot in stock expires within ${withinDays} days.`}
+          description={
+            withinDays === ALL_LOTS
+              ? 'No lot-tracked stock on hand.'
+              : `No lot in stock expires within ${withinDays} days.`
+          }
         />
       ) : (
         <div className="rounded-md border">
