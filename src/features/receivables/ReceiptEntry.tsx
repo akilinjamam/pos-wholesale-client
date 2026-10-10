@@ -14,7 +14,11 @@ import { OffScreen } from '@/features/counter/print/PrintDocs';
 import { usePrint } from '@/features/counter/print/printHelpers';
 import { money } from '@/features/dealers/creditMath';
 import { useOrg } from '@/hooks/data/useOrg';
-import { useAllocationPreview, usePostReceipt } from '@/hooks/data/useReceivables';
+import {
+  useAllocationPreview,
+  usePostReceipt,
+  useReceiveCheque,
+} from '@/hooks/data/useReceivables';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 import { allocatedMinor, errorsByInvoice, fromPlan, toAllocations } from './allocation';
@@ -40,12 +44,20 @@ import type { PartyPayload, ReceiptResult } from '@shared/types';
  * checks the allocation again against the invoices as they are when the receipt posts.
  */
 
-const METHOD_LABEL: Record<ReceiptMethod, string> = {
+/** A cheque is taken here too, but it posts nothing until it clears (Day 30). */
+type EntryMethod = ReceiptMethod | 'CHEQUE';
+const ENTRY_METHODS: EntryMethod[] = [...RECEIPT_METHODS, 'CHEQUE'];
+
+const METHOD_LABEL: Record<EntryMethod, string> = {
   CASH: 'Cash',
   BANK: 'Bank transfer / deposit',
   MFS: 'bKash / Nagad / Rocket',
   CARD: 'Card',
+  CHEQUE: 'Cheque',
 };
+
+/** `YYYY-MM-DD`, local — today, as a date input holds it. */
+const localToday = () => localNow().slice(0, 10);
 
 /** `YYYY-MM-DDTHH:mm`, local — what a datetime-local input holds. */
 const localNow = () => {
@@ -58,7 +70,11 @@ export function ReceiptEntry() {
   const navigate = useNavigate();
   const [dealer, setDealer] = useState<PartyPayload | null>(null);
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<ReceiptMethod>('CASH');
+  const [method, setMethod] = useState<EntryMethod>('CASH');
+  const [chequeNo, setChequeNo] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [branch, setBranch] = useState('');
+  const [chequeDate, setChequeDate] = useState(localToday);
   const [paidAt, setPaidAt] = useState(localNow);
   const [paidAtEdited, setPaidAtEdited] = useState(false);
   const [reference, setReference] = useState('');
@@ -87,6 +103,9 @@ export function ReceiptEntry() {
   const allocated = allocatedMinor(invoices, apply);
 
   const post = usePostReceipt();
+  const cheque = useReceiveCheque();
+  const isCheque = method === 'CHEQUE';
+  const pending = post.isPending || cheque.isPending;
   const { data: org } = useOrg();
   const printRef = useRef<HTMLDivElement>(null);
   const print = usePrint(printRef, 'A4', `Receipt ${done?.receipt.docNo ?? ''}`);
@@ -97,9 +116,11 @@ export function ReceiptEntry() {
       ? 'Enter the amount received'
       : method === 'MFS' && trxId.trim().length < 4
         ? 'Enter the transaction id'
-        : allocated > amountMinor
-          ? 'Allocated more than was received'
-          : null;
+        : isCheque && (!chequeNo.trim() || bankName.trim().length < 2)
+          ? 'Enter the cheque number and bank'
+          : allocated > amountMinor
+            ? 'Allocated more than was received'
+            : null;
 
   const reset = () => {
     setDealer(null);
@@ -108,6 +129,10 @@ export function ReceiptEntry() {
     setTrxId('');
     setSender('');
     setNarration('');
+    setChequeNo('');
+    setBankName('');
+    setBranch('');
+    setChequeDate(localToday());
     setTouched(false);
     setUserApply({});
     setPaidAt(localNow());
@@ -119,6 +144,33 @@ export function ReceiptEntry() {
   const submit = () => {
     if (!dealer || blocker) return;
     const { allocations, invoiceIds } = toAllocations(invoices, apply);
+    const onError = (e: unknown) => setErrors(errorsByInvoice(fieldErrors(e), invoiceIds));
+    if (method === 'CHEQUE') {
+      // Taken, not posted: the split rides along and is applied when it clears.
+      cheque.mutate(
+        {
+          partyId: dealer.id,
+          amountMinor,
+          chequeNo: chequeNo.trim(),
+          bankName: bankName.trim(),
+          branch: branch.trim() || null,
+          chequeDate,
+          allocations,
+          ...(paidAtEdited ? { receivedAt: new Date(paidAt).toISOString() } : {}),
+          narration: narration.trim() || null,
+        },
+        {
+          onSuccess: (c) => {
+            setDone({ receipt: c, invoices: [] });
+            toast.success(
+              `Cheque ${c.instrument?.chequeNo} taken as ${c.docNo} — held until it clears`,
+            );
+          },
+          onError,
+        },
+      );
+      return;
+    }
     post.mutate(
       {
         partyId: dealer.id,
@@ -142,7 +194,7 @@ export function ReceiptEntry() {
           setDone(r);
           toast.success(`${r.receipt.docNo} posted — ${money(r.receipt.amountMinor)}`);
         },
-        onError: (e) => setErrors(errorsByInvoice(fieldErrors(e), invoiceIds)),
+        onError,
       },
     );
   };
@@ -158,9 +210,31 @@ export function ReceiptEntry() {
         />
         <Card className="max-w-2xl">
           <CardContent className="space-y-3 pt-6 text-sm">
-            <p className="flex items-center gap-2 font-medium text-success">
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Posted
-            </p>
+            {r.instrument ? (
+              <div className="space-y-2">
+                <p className="flex items-center gap-2 font-medium text-warning">
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Cheque taken — held
+                  until it clears
+                </p>
+                <p className="text-muted-foreground">
+                  Cheque {r.instrument.chequeNo}, {r.instrument.bankName}, dated{' '}
+                  {r.instrument.chequeDate?.slice(0, 10)}. Nothing is posted and no invoice is
+                  paid until it clears; then it is applied as below.
+                </p>
+                <ul className="divide-y rounded-md border">
+                  {r.intendedAllocations.map((a) => (
+                    <li key={a.invoiceId} className="flex justify-between gap-3 px-3 py-2">
+                      <span className="font-mono">{a.docNo}</span>
+                      <span className="tabular-nums">{money(a.amountMinor)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="flex items-center gap-2 font-medium text-success">
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Posted
+              </p>
+            )}
             <ul className="divide-y rounded-md border">
               {done.invoices.map((i) => (
                 <li key={i.id} className="flex justify-between gap-3 px-3 py-2">
@@ -244,11 +318,8 @@ export function ReceiptEntry() {
               />
             </Field>
             <Field label="How">
-              <Select
-                value={method}
-                onChange={(e) => setMethod(e.target.value as ReceiptMethod)}
-              >
-                {RECEIPT_METHODS.map((m) => (
+              <Select value={method} onChange={(e) => setMethod(e.target.value as EntryMethod)}>
+                {ENTRY_METHODS.map((m) => (
                   <option key={m} value={m}>
                     {METHOD_LABEL[m]}
                   </option>
@@ -278,6 +349,34 @@ export function ReceiptEntry() {
                 </Field>
                 <Field label="Sender number">
                   <Input value={sender} onChange={(e) => setSender(e.target.value)} />
+                </Field>
+              </div>
+            )}
+            {isCheque && (
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Cheque no.">
+                  <Input
+                    value={chequeNo}
+                    onChange={(e) => setChequeNo(e.target.value.toUpperCase())}
+                    className="font-mono"
+                  />
+                </Field>
+                <Field label="Dated">
+                  <Input
+                    type="date"
+                    value={chequeDate}
+                    onChange={(e) => setChequeDate(e.target.value)}
+                  />
+                </Field>
+                <Field label="Bank">
+                  <Input
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="e.g. Dutch-Bangla"
+                  />
+                </Field>
+                <Field label="Branch">
+                  <Input value={branch} onChange={(e) => setBranch(e.target.value)} />
                 </Field>
               </div>
             )}
@@ -311,12 +410,12 @@ export function ReceiptEntry() {
             ))}
             <Button
               className="w-full"
-              disabled={Boolean(blocker) || post.isPending}
+              disabled={Boolean(blocker) || pending}
               onClick={submit}
               title={blocker ?? undefined}
             >
-              {post.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-              Post receipt
+              {pending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+              {isCheque ? 'Take cheque' : 'Post receipt'}
             </Button>
             {blocker && <p className="text-xs text-muted-foreground">{blocker}.</p>}
           </CardContent>
@@ -324,7 +423,9 @@ export function ReceiptEntry() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Against</CardTitle>
+            <CardTitle className="text-sm">
+              {isCheque ? 'Against — applied when the cheque clears' : 'Against'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {!dealer || amountMinor <= 0 ? (
@@ -351,7 +452,7 @@ export function ReceiptEntry() {
                   setTouched(false);
                   setErrors({ byInvoice: {}, general: [] });
                 }}
-                disabled={post.isPending}
+                disabled={pending}
               />
             )}
           </CardContent>

@@ -241,11 +241,16 @@ export const MODULES: ModuleDef[] = [
         description: 'Who owes, how overdue — printed for the collector',
       },
       {
+        label: 'Cheques',
+        path: '/receivables/cheques',
+        permission: 'payment:read',
+        description: 'Cheques in hand, at the bank, cleared or bounced',
+      },
+      {
         label: 'Ageing',
         path: '/receivables/ageing',
         permission: 'payment:read',
-        description: 'Who owes what, and how overdue it is',
-        comingSoon: true,
+        description: 'Who owes what, and how overdue it is — as of any day',
       },
     ],
   },

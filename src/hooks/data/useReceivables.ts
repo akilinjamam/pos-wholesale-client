@@ -4,7 +4,14 @@ import * as api from '@/api/endpoints/receivables';
 import { partyKeys } from '@/hooks/data/useParties';
 
 import type { ListReceiptsParams } from '@/api/endpoints/receivables';
-import type { AllocateReceiptInput, ReceiptInput } from '@shared/payments';
+import type {
+  AllocateReceiptInput,
+  BounceChequeInput,
+  ChequeInput,
+  ClearChequeInput,
+  DepositChequeInput,
+  ReceiptInput,
+} from '@shared/payments';
 
 export const receivableKeys = {
   all: ['receivables'] as const,
@@ -13,6 +20,8 @@ export const receivableKeys = {
   receipts: (p: ListReceiptsParams) => ['receivables', 'receipts', p] as const,
   statement: (p: object) => ['receivables', 'statement', p] as const,
   collection: (p: object) => ['receivables', 'collection', p] as const,
+  cheques: (p: object) => ['receivables', 'cheques', p] as const,
+  ageing: (p: object) => ['receivables', 'ageing', p] as const,
 };
 
 /** The FIFO proposal for this much money from this party — the allocation grid's starting rows. */
@@ -75,6 +84,59 @@ export function useAllocateReceipt() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: AllocateReceiptInput }) =>
       api.allocateReceipt(id, body),
+    onSuccess: settle,
+  });
+}
+
+// ─── Cheques and ageing (Day 30) ────────────────────────────────────────────────────────
+
+export function useCheques(params: Parameters<typeof api.listCheques>[0]) {
+  return useQuery({
+    queryKey: receivableKeys.cheques(params),
+    queryFn: () => api.listCheques(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAgeing(params: Parameters<typeof api.getAgeing>[0]) {
+  return useQuery({
+    queryKey: receivableKeys.ageing(params),
+    queryFn: () => api.getAgeing(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useReceiveCheque() {
+  const settle = useSettle();
+  return useMutation({
+    mutationFn: (body: ChequeInput) => api.receiveCheque(body),
+    onSuccess: settle,
+  });
+}
+
+export function useDepositCheque() {
+  const settle = useSettle();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: DepositChequeInput }) =>
+      api.depositCheque(id, body),
+    onSuccess: settle,
+  });
+}
+
+export function useClearCheque() {
+  const settle = useSettle();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ClearChequeInput }) =>
+      api.clearCheque(id, body),
+    onSuccess: settle,
+  });
+}
+
+export function useBounceCheque() {
+  const settle = useSettle();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: BounceChequeInput }) =>
+      api.bounceCheque(id, body),
     onSuccess: settle,
   });
 }

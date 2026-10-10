@@ -73,6 +73,11 @@ export function ReceiptsList({ unapplied = false }: { unapplied?: boolean }) {
       cell: (r) => (
         <span className="text-sm">
           {r.method === 'ADJUSTMENT' ? 'Opening advance' : humanise(r.method)}
+          {r.instrument && (
+            <span className="ml-1 text-xs text-muted-foreground">
+              ({humanise(r.instrument.status)})
+            </span>
+          )}
           {(r.reference || r.mfs) && (
             <span className="block text-xs text-muted-foreground">
               {r.mfs?.trxId ?? r.reference}
@@ -85,9 +90,11 @@ export function ReceiptsList({ unapplied = false }: { unapplied?: boolean }) {
       key: 'against',
       header: 'Against',
       cell: (r) =>
-        r.allocations.length ? (
+        r.allocations.some((a) => !a.reversedAt) ? (
           <span className="text-xs">
-            {[...new Set(r.allocations.map((a) => a.docNo))].join(', ')}
+            {[...new Set(r.allocations.filter((a) => !a.reversedAt).map((a) => a.docNo))].join(
+              ', ',
+            )}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>

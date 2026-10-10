@@ -1,7 +1,16 @@
 import { getData, getPage, postData } from '@/api/client';
 
-import type { AllocateReceiptInput, ReceiptInput } from '@shared/payments';
 import type {
+  AllocateReceiptInput,
+  BounceChequeInput,
+  ChequeInput,
+  ClearChequeInput,
+  DepositChequeInput,
+  ReceiptInput,
+} from '@shared/payments';
+import type { ChequeStatus } from '@shared/enums';
+import type {
+  AgeingReport,
   AllocationPreview,
   CollectionSheet,
   Paginated,
@@ -40,3 +49,24 @@ export const getCollectionSheet = (params: {
   territory?: string;
   overdueOnly?: boolean;
 }) => getData<CollectionSheet>('/payments/collection-sheet', params);
+
+// ─── Cheques and ageing (Day 30) ────────────────────────────────────────────────────────
+
+export const listCheques = (params: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  status?: ChequeStatus;
+  partyId?: string;
+}) => getPage<ReceiptPayload>('/payments/cheques', params);
+export const receiveCheque = (body: ChequeInput) =>
+  postData<ReceiptPayload>('/payments/cheques', body);
+export const depositCheque = (id: string, body: DepositChequeInput) =>
+  postData<ReceiptPayload>(`/payments/cheques/${id}/deposit`, body);
+export const clearCheque = (id: string, body: ClearChequeInput) =>
+  postData<ReceiptResult>(`/payments/cheques/${id}/clear`, body);
+export const bounceCheque = (id: string, body: BounceChequeInput) =>
+  postData<ReceiptResult>(`/payments/cheques/${id}/bounce`, body);
+
+export const getAgeing = (params: { asOf?: string; territory?: string; partyId?: string }) =>
+  getData<AgeingReport>('/payments/ageing', params);

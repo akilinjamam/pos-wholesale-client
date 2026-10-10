@@ -7,6 +7,7 @@ import { balanceText, docLabel } from '../format';
 
 import type { ReactNode } from 'react';
 import type {
+  AgeingReport,
   CollectionSheet,
   OrgPayload,
   ReceiptResult,
@@ -281,7 +282,11 @@ export const MoneyReceiptDoc = forwardRef<
         Received with thanks from <strong>{p.partyName}</strong> ({p.partyCode}) the sum of{' '}
         <strong>{money(p.amountMinor)}</strong> by {p.method.toLowerCase()}
         {p.reference ? ` (ref ${p.reference})` : ''}
-        {p.mfs ? ` (${p.mfs.provider} ${p.mfs.trxId})` : ''}.
+        {p.mfs ? ` (${p.mfs.provider} ${p.mfs.trxId})` : ''}
+        {p.instrument
+          ? ` no. ${p.instrument.chequeNo}, ${p.instrument.bankName ?? ''}, dated ${fmtDate(p.instrument.chequeDate)} — subject to realisation`
+          : ''}
+        .
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
@@ -291,12 +296,21 @@ export const MoneyReceiptDoc = forwardRef<
           </tr>
         </thead>
         <tbody>
-          {p.allocations.map((a) => (
-            <tr key={`${a.invoiceId}-${a.allocatedAt}`}>
-              <td style={cell}>Invoice {a.docNo}</td>
-              <td style={num}>{money(a.amountMinor)}</td>
-            </tr>
-          ))}
+          {p.allocations
+            .filter((a) => !a.reversedAt)
+            .map((a) => (
+              <tr key={`${a.invoiceId}-${a.allocatedAt}`}>
+                <td style={cell}>Invoice {a.docNo}</td>
+                <td style={num}>{money(a.amountMinor)}</td>
+              </tr>
+            ))}
+          {p.instrument?.status !== 'CLEARED' &&
+            p.intendedAllocations.map((a) => (
+              <tr key={`intended-${a.invoiceId}`}>
+                <td style={cell}>Invoice {a.docNo} — when the cheque clears</td>
+                <td style={num}>{money(a.amountMinor)}</td>
+              </tr>
+            ))}
           {p.unallocatedMinor > 0 && (
             <tr>
               <td style={cell}>On account (advance)</td>
@@ -321,6 +335,65 @@ export const MoneyReceiptDoc = forwardRef<
           Received by
         </div>
       </div>
+    </div>
+  );
+});
+
+// ─── Ageing ─────────────────────────────────────────────────────────────────────────────
+
+export const AgeingDoc = forwardRef<
+  HTMLDivElement,
+  { r: AgeingReport; org: OrgPayload | undefined; labels: Record<string, string> }
+>(function AgeingDoc({ r, org, labels }, ref) {
+  return (
+    <div ref={ref} style={page}>
+      <Header
+        org={org}
+        title="RECEIVABLES AGEING"
+        right={
+          <>
+            <div>As of {day(`${r.asOf}T00:00:00Z`)}</div>
+            <div style={{ fontSize: 10 }}>Printed {fmtDateTime(r.generatedAt)}</div>
+          </>
+        }
+      />
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={head}>Dealer</th>
+            {r.buckets.map((b) => (
+              <th key={b} style={headNum}>
+                {labels[b]}
+              </th>
+            ))}
+            <th style={headNum}>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {r.rows.map((row) => (
+            <tr key={row.partyId}>
+              <td style={cell}>
+                {row.name} <span style={{ fontSize: 10 }}>({row.code})</span>
+              </td>
+              {r.buckets.map((b) => (
+                <td key={b} style={num}>
+                  {row.buckets[b] ? money(row.buckets[b]) : ''}
+                </td>
+              ))}
+              <td style={{ ...num, fontWeight: 600 }}>{money(row.totalMinor)}</td>
+            </tr>
+          ))}
+          <tr style={{ fontWeight: 700 }}>
+            <td style={cell}>Total</td>
+            {r.buckets.map((b) => (
+              <td key={b} style={num}>
+                {money(r.totals[b])}
+              </td>
+            ))}
+            <td style={num}>{money(r.totalMinor)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 });

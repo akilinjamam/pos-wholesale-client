@@ -28,6 +28,8 @@ import { StockOnHand } from '@/features/inventory/StockOnHand';
 import { Transfers } from '@/features/inventory/Transfers';
 import { PriceLists } from '@/features/pricing/PriceLists';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
+import { AgeingPage } from '@/features/receivables/AgeingPage';
+import { ChequeRegister } from '@/features/receivables/ChequeRegister';
 import { CollectionSheetPage } from '@/features/receivables/CollectionSheetPage';
 import { ReceiptEntry } from '@/features/receivables/ReceiptEntry';
 import { ReceiptsList } from '@/features/receivables/ReceiptsList';
@@ -94,6 +96,8 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/receivables/unapplied': <ReceiptsList unapplied />,
   '/receivables/statement': <StatementPage />,
   '/receivables/collection': <CollectionSheetPage />,
+  '/receivables/cheques': <ChequeRegister />,
+  '/receivables/ageing': <AgeingPage />,
   '/sales/approvals': <Approvals />,
   '/dispatch/challans': <ChallansList />,
   '/dealers/list': <DealersList />,
