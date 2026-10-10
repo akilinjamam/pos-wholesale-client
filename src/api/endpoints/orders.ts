@@ -9,7 +9,14 @@ import type {
   UpdateOrderInput,
 } from '@shared/orders';
 import type { FulfillmentStatus, OrderStatus } from '@shared/enums';
-import type { OrderCounts, OrderQuote, Paginated, WholesaleOrderPayload } from '@shared/types';
+import type { CreditOverridesQuery } from '@shared/audit';
+import type {
+  CreditOverrideDashboard,
+  OrderCounts,
+  OrderQuote,
+  Paginated,
+  WholesaleOrderPayload,
+} from '@shared/types';
 
 /** Wholesale orders (Day 22 server, Day 23 builder). */
 
@@ -86,3 +93,9 @@ export const shortCloseOrder = (id: string, body: OrderReasonInput) =>
 /** A delivered order is done. */
 export const closeOrder = (id: string) =>
   postData<WholesaleOrderPayload>(`/orders/${id}/close`, {});
+
+// ─── Day 31 ─────────────────────────────────────────────────────────────────────────────
+
+/** Every credit override in a period — who lent past a limit, why, and where the dealer is now. */
+export const getCreditOverrides = (params: CreditOverridesQuery) =>
+  getData<CreditOverrideDashboard>('/audit/credit-overrides', params);

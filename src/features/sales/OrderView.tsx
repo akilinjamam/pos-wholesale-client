@@ -381,7 +381,7 @@ export function OrderView({ order }: { order: WholesaleOrderPayload }) {
                         : 'warning'
                   }
                 />
-                <Row label="Owed at the time" value={money(credit.outstandingMinor)} />
+                <Row label="Exposure before" value={money(credit.outstandingMinor)} />
                 <Row label="With this order" value={money(credit.exposureMinor)} />
                 <Row
                   label="Limit"

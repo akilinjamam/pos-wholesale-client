@@ -35,6 +35,7 @@ import { ReceiptEntry } from '@/features/receivables/ReceiptEntry';
 import { ReceiptsList } from '@/features/receivables/ReceiptsList';
 import { StatementPage } from '@/features/receivables/StatementPage';
 import { Approvals } from '@/features/sales/Approvals';
+import { CreditOverrides } from '@/features/sales/CreditOverrides';
 import { NewOrderPage, OrderPage } from '@/features/sales/OrderPage';
 import { OrdersList } from '@/features/sales/OrdersList';
 import { ModulePlaceholder } from '@/features/home/ModulePlaceholder';
@@ -99,6 +100,7 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/receivables/cheques': <ChequeRegister />,
   '/receivables/ageing': <AgeingPage />,
   '/sales/approvals': <Approvals />,
+  '/sales/credit-overrides': <CreditOverrides />,
   '/dispatch/challans': <ChallansList />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,

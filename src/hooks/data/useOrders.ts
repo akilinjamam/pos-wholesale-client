@@ -11,6 +11,7 @@ import type {
   OrderReasonInput,
   QuoteOrderInput,
 } from '@shared/orders';
+import type { CreditOverridesQuery } from '@shared/audit';
 import type { WholesaleOrderPayload } from '@shared/types';
 
 export const orderKeys = {
@@ -19,6 +20,7 @@ export const orderKeys = {
   detail: (id: string) => ['orders', 'detail', id] as const,
   quote: (body: QuoteOrderInput) => ['orders', 'quote', body] as const,
   counts: (locationId?: string) => ['orders', 'counts', locationId ?? ''] as const,
+  overrides: (params: CreditOverridesQuery) => ['orders', 'credit-overrides', params] as const,
 };
 
 export function useOrders(params: ListOrdersParams) {
@@ -62,6 +64,7 @@ function useSettle() {
     void qc.invalidateQueries({ queryKey: ['orders', 'list'] });
     void qc.invalidateQueries({ queryKey: ['orders', 'counts'] });
     void qc.invalidateQueries({ queryKey: ['orders', 'quote'] });
+    void qc.invalidateQueries({ queryKey: ['orders', 'credit-overrides'] });
     if (stockMoved) {
       void qc.invalidateQueries({ queryKey: stockKeys.all });
       // Cancel and short close also cancel the order's open challans.
@@ -138,5 +141,14 @@ export function useCloseOrder() {
   return useMutation({
     mutationFn: (id: string) => api.closeOrder(id),
     onSuccess: (order) => settle(order),
+  });
+}
+
+/** The managers' credit overrides dashboard (Day 31). */
+export function useCreditOverrides(params: CreditOverridesQuery) {
+  return useQuery({
+    queryKey: orderKeys.overrides(params),
+    queryFn: () => api.getCreditOverrides(params),
+    placeholderData: keepPreviousData,
   });
 }

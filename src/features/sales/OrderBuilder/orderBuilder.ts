@@ -1,5 +1,3 @@
-import { AxiosError } from 'axios';
-
 import { getParty } from '@/api/endpoints/parties';
 import { getProduct } from '@/api/endpoints/products';
 import { listVariants } from '@/api/endpoints/variants';
@@ -158,14 +156,4 @@ export async function fromOrder(order: WholesaleOrderPayload): Promise<BuilderSt
       discountPct: l.discountPct || null,
     })),
   };
-}
-
-/** The `details` object of an API refusal — e.g. `{ canOverride, limitMinor }` on a credit 409. */
-export function errorDetails(error: unknown): Record<string, unknown> {
-  if (!(error instanceof AxiosError)) return {};
-  const details = (error.response?.data as { error?: { details?: unknown } } | undefined)?.error
-    ?.details;
-  return details && typeof details === 'object' && !Array.isArray(details)
-    ? (details as Record<string, unknown>)
-    : {};
 }

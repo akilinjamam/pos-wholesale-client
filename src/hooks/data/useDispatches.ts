@@ -9,6 +9,7 @@ import type {
   CancelDispatchInput,
   CreateDispatchInput,
   DeliverDispatchInput,
+  PostDispatchInput,
   UpdateDispatchInput,
 } from '@shared/dispatch';
 import type { DispatchPayload } from '@shared/types';
@@ -66,6 +67,7 @@ function useSettle() {
     void qc.invalidateQueries({ queryKey: ['dispatches', 'list'] });
     void qc.invalidateQueries({ queryKey: orderKeys.detail(d.orderId) });
     void qc.invalidateQueries({ queryKey: ['orders', 'list'] });
+    void qc.invalidateQueries({ queryKey: ['orders', 'credit-overrides'] });
     if (stock) {
       void qc.invalidateQueries({ queryKey: stockKeys.all });
       void qc.invalidateQueries({ queryKey: ['invoices'] });
@@ -101,7 +103,8 @@ export function usePackDispatch() {
 export function usePostDispatch() {
   const settle = useSettle();
   return useMutation({
-    mutationFn: (id: string) => api.postDispatch(id),
+    mutationFn: ({ id, body }: { id: string; body?: PostDispatchInput }) =>
+      api.postDispatch(id, body),
     onSuccess: (r) => settle(r.dispatch, { stock: true }),
   });
 }

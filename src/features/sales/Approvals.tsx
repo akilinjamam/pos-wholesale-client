@@ -103,7 +103,7 @@ export function Approvals() {
 
                     {c && (
                       <dl className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-sm tabular-nums sm:grid-cols-4">
-                        <Fig label="Owes now" value={money(c.outstandingMinor)} />
+                        <Fig label="Exposure before" value={money(c.outstandingMinor)} />
                         <Fig label="With this order" value={money(c.exposureMinor)} />
                         <Fig
                           label="Limit"

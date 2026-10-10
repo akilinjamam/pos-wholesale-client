@@ -145,6 +145,12 @@ export const MODULES: ModuleDef[] = [
         permission: 'order:approve',
         description: 'Orders over the credit limit, waiting for a manager',
       },
+      {
+        label: 'Credit overrides',
+        path: '/sales/credit-overrides',
+        permission: 'order:approve',
+        description: 'Who lent past a credit limit, why, and where the dealer stands now',
+      },
     ],
   },
   {

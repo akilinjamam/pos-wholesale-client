@@ -3,8 +3,13 @@ import { getData, patchData } from '@/api/client';
 import type { OrgPayload, OrgSettings } from '@shared/types';
 
 /** V1 is single-tenant: "the org" is the caller's own, taken from their token. No id. */
+/**
+ * Silent: screens fetch the company profile in the background for their print letterhead, and a
+ * role without `org:read` (a store keeper on a challan) would otherwise get a "no permission" toast
+ * about something they never clicked — beside the refusal they did need to read.
+ */
 export function fetchOrg(): Promise<OrgPayload> {
-  return getData<OrgPayload>('/org');
+  return getData<OrgPayload>('/org', undefined, { silent: true });
 }
 
 export type UpdateOrgBody = Partial<

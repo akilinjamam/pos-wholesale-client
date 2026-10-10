@@ -13,7 +13,7 @@ import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { fieldErrors } from '@/api/client';
+import { errorCode, errorDetails, errorMessage, fieldErrors } from '@/api/client';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -103,7 +103,8 @@ function Challan({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
-  const [modal, setModal] = useState<'post' | 'cancel' | null>(null);
+  const [modal, setModal] = useState<'post' | 'override' | 'cancel' | null>(null);
+  const [shortfall, setShortfall] = useState<number | null>(null);
 
   const update = useUpdateDispatch();
   const pack = usePackDispatch();
@@ -167,16 +168,37 @@ function Challan({
     }
   };
 
-  const onPost = () =>
-    post.mutate(d.id, {
-      onSuccess: (r) => {
-        setModal(null);
-        toast.success(
-          `${r.dispatch.docNo} posted${r.invoice ? ` — invoice ${r.invoice.docNo} raised` : ''}`,
-        );
+  // Credit is re-checked as the goods leave (Day 31). A refusal is a question for whoever holds
+  // `order:creditOverride` — post anyway, with a reason — and an explanation for anyone else.
+  const onPost = (creditOverrideReason?: string) =>
+    post.mutate(
+      { id: d.id, body: creditOverrideReason ? { creditOverrideReason } : {} },
+      {
+        onSuccess: (r) => {
+          setModal(null);
+          toast.success(
+            `${r.dispatch.docNo} posted${r.invoice ? ` — invoice ${r.invoice.docNo} raised` : ''}`,
+          );
+        },
+        onError: (error) => {
+          const details = errorDetails(error);
+          if (errorCode(error) === 'CREDIT_LIMIT_EXCEEDED' && details.canOverride === true) {
+            setShortfall(
+              typeof details.shortfallMinor === 'number' ? details.shortfallMinor : null,
+            );
+            setModal('override');
+            return;
+          }
+          setModal(null);
+          toast.error(errorMessage(error), {
+            description:
+              errorCode(error) === 'CREDIT_LIMIT_EXCEEDED' && details.reason === 'OVER_LIMIT'
+                ? 'Collect a payment first, or ask a sales manager to post it.'
+                : undefined,
+          });
+        },
       },
-      onError: () => setModal(null),
-    });
+    );
 
   return (
     <div className="space-y-4">
@@ -363,11 +385,21 @@ function Challan({
         <ConfirmDialog
           open
           onClose={() => setModal(null)}
-          onConfirm={onPost}
+          onConfirm={() => onPost()}
           pending={post.isPending}
           title="Post this challan?"
           confirmLabel="Post — goods leave"
           description={`${rows.reduce((s, r) => s + r.qtyBase, 0)} units leave ${d.locationName ?? 'the warehouse'} for ${d.dealerName}. The challan is numbered and, if the company invoices on dispatch, the invoice is raised and the dealer debited. This cannot be undone — goods that come back are a sales return.`}
+        />
+      )}
+      {modal === 'override' && (
+        <ReasonDialog
+          title="Post over the credit limit?"
+          description={`${d.dealerName ?? 'The dealer'} is over their credit limit${shortfall ? ` by ${money(shortfall)}` : ''} since this order was confirmed. You can let the goods go anyway — say why; the reason is kept on the order and in the audit log.`}
+          confirmLabel="Override and post"
+          pending={post.isPending}
+          onConfirm={(reason) => onPost(reason)}
+          onClose={() => setModal(null)}
         />
       )}
       {modal === 'cancel' && (

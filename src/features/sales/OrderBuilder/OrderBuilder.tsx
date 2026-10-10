@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { errorCode, errorMessage, fieldErrors } from '@/api/client';
+import { errorCode, errorDetails, errorMessage, fieldErrors } from '@/api/client';
 import { DealerPicker } from '@/components/common/DealerPicker';
 import { PageHeader } from '@/components/common/PageHeader';
 import { ProductPicker } from '@/components/common/ProductPicker';
@@ -27,7 +27,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 import { ReasonDialog } from '../ReasonDialog';
 
-import { errorDetails, lineFor, sameItem, toOrderInput } from './orderBuilder';
+import { lineFor, sameItem, toOrderInput } from './orderBuilder';
 import { OrderLinesGrid } from './OrderLinesGrid';
 import { CreditPanel, TotalsPanel } from './OrderSidePanels';
 

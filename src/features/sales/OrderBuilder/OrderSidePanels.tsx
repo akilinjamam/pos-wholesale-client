@@ -18,8 +18,10 @@ import type { OrderCreditPosition, OrderDiscountSpec, OrderQuote } from '@shared
  */
 
 /**
- * Where the dealer stands if this order goes through. The meter is balance-against-limit today;
- * the line under it is exposure *after* this order — the number the confirm will be judged on.
+ * Where the dealer stands if this order goes through. The meter is exposure against the limit
+ * today — not just the ledger balance: confirmed orders still to be invoiced count, and money on
+ * account comes off (Day 31). The line under it is exposure *after* this order — the number the
+ * confirm will be judged on.
  */
 export function CreditPanel({
   credit,
@@ -46,9 +48,18 @@ export function CreditPanel({
         ) : (
           <>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Owes now</span>
-              <CreditUsage balanceMinor={credit.balanceMinor} limitMinor={credit.limitMinor} />
+              <span className="text-muted-foreground">Exposure now</span>
+              <CreditUsage balanceMinor={credit.exposureMinor} limitMinor={credit.limitMinor} />
             </div>
+            <dl className="space-y-0.5 border-l-2 pl-3 text-xs text-muted-foreground">
+              <Part label="Open invoices" minor={credit.openInvoicesMinor} />
+              {credit.openOrdersMinor > 0 && (
+                <Part label="Confirmed, not yet invoiced" minor={credit.openOrdersMinor} />
+              )}
+              {credit.unallocatedMinor > 0 && (
+                <Part label="On account" minor={-credit.unallocatedMinor} />
+              )}
+            </dl>
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">After this order</span>
               <span
@@ -60,11 +71,31 @@ export function CreditPanel({
                 {money(credit.exposureAfterMinor)}
               </span>
             </div>
+            {credit.shortfallMinor > 0 && credit.verdict === 'OVER_LIMIT' && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Over the limit by</span>
+                <span className="font-medium tabular-nums text-destructive">
+                  {money(credit.shortfallMinor)}
+                </span>
+              </div>
+            )}
             <CreditVerdict credit={credit} />
           </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function Part({ label, minor }: { label: string; minor: number }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt>{label}</dt>
+      <dd className="tabular-nums">
+        {minor < 0 ? '− ' : ''}
+        {money(Math.abs(minor))}
+      </dd>
+    </div>
   );
 }
 

@@ -71,6 +71,15 @@ export function errorCode(error: unknown): string | null {
   return null;
 }
 
+/** The `details` object of an API refusal — e.g. `{ canOverride, limitMinor }` on a credit 409. */
+export function errorDetails(error: unknown): Record<string, unknown> {
+  if (!(error instanceof AxiosError)) return {};
+  const details = (error.response?.data as ApiFailure | undefined)?.error?.details;
+  return details && typeof details === 'object' && !Array.isArray(details)
+    ? (details as Record<string, unknown>)
+    : {};
+}
+
 /**
  * A 422's field errors, ready to hand to react-hook-form's `setError`.
  *

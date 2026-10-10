@@ -1,9 +1,10 @@
-import { getData, getPage, patchData, postData } from '@/api/client';
+import { api, getData, getPage, patchData, postData } from '@/api/client';
 
 import type {
   CancelDispatchInput,
   CreateDispatchInput,
   DeliverDispatchInput,
+  PostDispatchInput,
   UpdateDispatchInput,
 } from '@shared/dispatch';
 import type { DispatchStatus } from '@shared/enums';
@@ -38,8 +39,24 @@ export const updateDispatch = (id: string, body: UpdateDispatchInput) =>
   patchData<DispatchPayload>(`/dispatches/${id}`, body);
 export const packDispatch = (id: string) =>
   postData<DispatchPayload>(`/dispatches/${id}/pack`, {});
-export const postDispatch = (id: string) =>
-  postData<DispatchPostResult>(`/dispatches/${id}/post`, {});
+/**
+ * Silent, like confirming an order: a post refused on credit is a question for a manager
+ * ("post anyway, with a reason?"), and the challan page asks it in a dialog. It toasts the other
+ * refusals itself.
+ */
+export const postDispatch = async (
+  id: string,
+  body: PostDispatchInput = {},
+): Promise<DispatchPostResult> => {
+  const { data } = await api.post<{ data: DispatchPostResult }>(
+    `/dispatches/${id}/post`,
+    body,
+    {
+      _silent: true,
+    } as never,
+  );
+  return data.data;
+};
 export const deliverDispatch = (id: string, body: DeliverDispatchInput) =>
   postData<DispatchPayload>(`/dispatches/${id}/deliver`, body);
 export const cancelDispatch = (id: string, body: CancelDispatchInput) =>
