@@ -602,7 +602,13 @@ function GrnView({ grn }: { grn: GoodsReceiptPayload }) {
                   <Row label="Other charges" value={money(grn.otherChargesMinor)} />
                 )}
                 <Row label="Bill total" value={money(grn.grandTotalMinor)} strong />
-                {posted && <Row label="Owed" value={money(grn.balanceMinor)} />}
+                {posted && Boolean(grn.paidMinor) && (
+                  <Row label="Paid" value={money(grn.paidMinor)} />
+                )}
+                {posted && Boolean(grn.creditedMinor) && (
+                  <Row label="Returned (debit notes)" value={`−${money(grn.creditedMinor)}`} />
+                )}
+                {posted && <Row label="Owed" value={money(grn.balanceMinor)} strong />}
               </>
             )}
             {grn.dueDate && <Row label="Due" value={grn.dueDate.slice(0, 10)} />}

@@ -8,8 +8,11 @@ import type {
   ListGrnsParams,
   ListPosParams,
   ListPurchaseReturnsParams,
+  ListSupplierPaymentsParams,
+  RegisterParams,
   ReorderParams,
 } from '@/api/endpoints/purchasing';
+import type { AllocateSupplierPaymentInput, SupplierPaymentInput } from '@shared/payments';
 import type {
   CancelGrnInput,
   CancelPoInput,
@@ -37,6 +40,10 @@ export const purchaseKeys = {
   grn: (id: string) => [...purchaseKeys.all, 'grn', id] as const,
   returns: (p: ListPurchaseReturnsParams) => [...purchaseKeys.all, 'returns', p] as const,
   reorder: (p: ReorderParams) => [...purchaseKeys.all, 'reorder', p] as const,
+  payments: (p: ListSupplierPaymentsParams) => [...purchaseKeys.all, 'payments', p] as const,
+  payables: (partyId: string, amountMinor: number) =>
+    [...purchaseKeys.all, 'payables', partyId, amountMinor] as const,
+  register: (p: RegisterParams) => [...purchaseKeys.all, 'register', p] as const,
 };
 
 export const usePos = (p: ListPosParams, enabled = true) =>
@@ -160,3 +167,49 @@ export const useCreatePurchaseReturn = () =>
     success: (r) => `${r.docNo} posted — goods out of stock`,
     movesStock: true,
   });
+
+// ─── Supplier payments (Day 35) ─────────────────────────────────────────────────────────
+// A payment moves the supplier's ledger balance, so parties and statements refresh too.
+
+export const useSupplierPayments = (p: ListSupplierPaymentsParams) =>
+  useQuery({
+    queryKey: purchaseKeys.payments(p),
+    queryFn: () => api.listSupplierPayments(p),
+    placeholderData: keepPreviousData,
+  });
+
+/** Oldest-due-first over the supplier's open bills, for this much money. */
+export const usePayablesPreview = (partyId: string | null, amountMinor: number) =>
+  useQuery({
+    queryKey: purchaseKeys.payables(partyId ?? '', amountMinor),
+    queryFn: () => api.payablesPreview(partyId!, amountMinor),
+    enabled: Boolean(partyId) && amountMinor > 0,
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+
+export const usePurchaseRegister = (p: RegisterParams) =>
+  useQuery({
+    queryKey: purchaseKeys.register(p),
+    queryFn: () => api.purchaseRegister(p),
+    placeholderData: keepPreviousData,
+  });
+
+function useMoneyMutation<V, R>(fn: (v: V) => Promise<R>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ['parties'] });
+      void queryClient.invalidateQueries({ queryKey: ['receivables'] });
+    },
+  });
+}
+
+export const usePostSupplierPayment = () =>
+  useMoneyMutation((b: SupplierPaymentInput) => api.postSupplierPayment(b));
+export const useAllocateSupplierPayment = () =>
+  useMoneyMutation(({ id, body }: { id: string; body: AllocateSupplierPaymentInput }) =>
+    api.allocateSupplierPayment(id, body),
+  );

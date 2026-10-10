@@ -292,6 +292,30 @@ export const MODULES: ModuleDef[] = [
         permission: 'po:read',
         description: 'Below the reorder point, net of what is on order',
       },
+      {
+        label: 'Suppliers',
+        path: '/purchase/suppliers',
+        permission: 'supplier:read',
+        description: 'Who we buy from, their terms, and what we owe each',
+      },
+      {
+        label: 'Supplier payments',
+        path: '/purchase/payments',
+        permission: 'payment:read',
+        description: 'Money paid out, set against their bills',
+      },
+      {
+        label: 'Supplier statement',
+        path: '/purchase/statement',
+        permission: 'ledger:read',
+        description: 'A supplier’s account, with the balance after every entry',
+      },
+      {
+        label: 'Purchase register',
+        path: '/purchase/register',
+        permission: 'report:purchase',
+        description: 'Bills and returns for a period — paid and owed',
+      },
     ],
   },
   {

@@ -189,7 +189,7 @@ export function StatementView({ partyId }: { partyId: string }) {
       )}
       {s && (
         <p className="text-xs text-muted-foreground">
-          Owes now:{' '}
+          Balance now:{' '}
           <span className="font-medium tabular-nums">{balanceText(s.currentBalanceMinor)}</span>
           {s.to < iso(today) &&
             ' — the period ends before today, so later entries are not shown.'}

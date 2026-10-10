@@ -1,6 +1,7 @@
 import { getData, getPage, patchData, postData } from '@/api/client';
 
-import type { GrnStatus, PoStatus } from '@shared/enums';
+import type { GrnStatus, PaymentMethod, PoStatus } from '@shared/enums';
+import type { AllocateSupplierPaymentInput, SupplierPaymentInput } from '@shared/payments';
 import type {
   CancelGrnInput,
   CancelPoInput,
@@ -14,9 +15,13 @@ import type {
 import type {
   GoodsReceiptPayload,
   Paginated,
+  PayablesPreview,
   PurchaseOrderPayload,
+  PurchaseRegisterPayload,
   PurchaseReturnPayload,
   ReorderSuggestionPayload,
+  SupplierPaymentPayload,
+  SupplierPaymentResult,
 } from '@shared/types';
 
 /** Purchasing (Days 32–34): purchase orders, goods receipts, purchase returns, reorder. */
@@ -96,3 +101,39 @@ export const listPurchaseReturns = (
   getPage<PurchaseReturnPayload>('/purchase-returns', params);
 export const createPurchaseReturn = (body: CreatePurchaseReturnInput) =>
   postData<PurchaseReturnPayload>('/purchase-returns', body);
+
+// ─── Supplier payments & register (Day 35) ──────────────────────────────────────────────
+
+export type ListSupplierPaymentsParams = ListBase & {
+  partyId?: string;
+  method?: PaymentMethod;
+  /** Only payments with an advance left on them. */
+  unallocated?: boolean;
+};
+
+export const listSupplierPayments = (
+  params: ListSupplierPaymentsParams,
+): Promise<Paginated<SupplierPaymentPayload>> =>
+  getPage<SupplierPaymentPayload>('/payments/supplier-payments', params);
+export const getSupplierPayment = (id: string) =>
+  getData<SupplierPaymentPayload>(`/payments/supplier-payments/${id}`);
+export const postSupplierPayment = (body: SupplierPaymentInput) =>
+  postData<SupplierPaymentResult>('/payments/supplier-payments', body);
+export const allocateSupplierPayment = (id: string, body: AllocateSupplierPaymentInput) =>
+  postData<SupplierPaymentResult>(`/payments/supplier-payments/${id}/allocate`, body);
+/** Silent: it re-runs as the amount is typed; a failure shows beside the grid. */
+export const payablesPreview = (partyId: string, amountMinor: number) =>
+  getData<PayablesPreview>(
+    '/payments/payables-preview',
+    { partyId, amountMinor },
+    { silent: true },
+  );
+
+export type RegisterParams = {
+  from?: string;
+  to?: string;
+  supplierPartyId?: string;
+  locationId?: string;
+};
+export const purchaseRegister = (params: RegisterParams) =>
+  getData<PurchaseRegisterPayload>('/goods-receipts/register', params);

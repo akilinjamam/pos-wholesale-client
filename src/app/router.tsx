@@ -31,6 +31,10 @@ import { GoodsReceipts } from '@/features/purchase/GoodsReceipts';
 import { GrnPage, NewGrnPage } from '@/features/purchase/GrnPage';
 import { NewPoPage, PoPage } from '@/features/purchase/PoPage';
 import { PurchaseOrders } from '@/features/purchase/PurchaseOrders';
+import { PurchaseRegister } from '@/features/purchase/PurchaseRegister';
+import { SupplierPaymentEntry } from '@/features/purchase/SupplierPaymentEntry';
+import { SupplierPayments } from '@/features/purchase/SupplierPayments';
+import { Suppliers } from '@/features/purchase/Suppliers';
 import { PurchaseReturns } from '@/features/purchase/PurchaseReturns';
 import { Reorder } from '@/features/purchase/Reorder';
 import { PriceTiers } from '@/features/pricing/PriceTiers';
@@ -112,6 +116,10 @@ const SCREEN_ELEMENTS: Record<string, ReactElement> = {
   '/purchase/grn': <GoodsReceipts />,
   '/purchase/returns': <PurchaseReturns />,
   '/purchase/reorder': <Reorder />,
+  '/purchase/suppliers': <Suppliers />,
+  '/purchase/payments': <SupplierPayments />,
+  '/purchase/statement': <StatementPage role="SUPPLIER" />,
+  '/purchase/register': <PurchaseRegister />,
   '/dealers/list': <DealersList />,
   '/dealers/customers': <CustomersList />,
   '/dealers/credit-holds': <CreditHolds />,
@@ -212,6 +220,14 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission permission="po:read">
                 <PoPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'purchase/payments/new',
+            element: (
+              <RequirePermission permission="payment:supplierPay">
+                <SupplierPaymentEntry />
               </RequirePermission>
             ),
           },
