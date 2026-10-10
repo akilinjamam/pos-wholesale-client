@@ -53,6 +53,11 @@
     --sidebar-border: 217 33% 20%;
 
     --radius: 0.6rem;
+
+    /* Chart series (Day 38): categorical slots 1–2, validated for colour-blind separation and
+       contrast on this surface. Wholesale is slot 1, counter slot 2 — everywhere, always. */
+    --chart-1: #2a78d6;
+    --chart-2: #eb6834;
   }
 
   .dark {
@@ -94,6 +99,10 @@
     --sidebar-foreground: 210 40% 96%;
     --sidebar-accent: 231 65% 66%;
     --sidebar-border: 217 33% 16%;
+
+    /* The same two hues, stepped for the dark surface (validated separately, not flipped). */
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
   }
 }
 
